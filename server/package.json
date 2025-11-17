@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
+    "dev": "npm run start",
     "lint": "node --check src/*.js src/**/*.js"
   },
   "dependencies": {
