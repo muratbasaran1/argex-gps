@@ -5,3 +5,4 @@ data/*.db
 data/**/*.db
 npm-debug.log*
 .DS_Store
+server/.env
