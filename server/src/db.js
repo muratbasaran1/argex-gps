@@ -66,11 +66,49 @@ let poolPromise;
 
 export async function getDbPool() {
   if (!poolPromise) {
-    const mysql = await loadMysqlModule();
-    const config = buildPoolConfig();
-    const pool = await mysql.createPool(config);
-    await ensureSettingsSchema(pool);
-    poolPromise = Promise.resolve(pool);
+    poolPromise = (async () => {
+      const mysql = await loadMysqlModule();
+      const config = buildPoolConfig();
+      return createPoolWithRetry(mysql, config);
+    })();
   }
   return poolPromise;
+}
+
+async function createPoolWithRetry(mysql, config, options = {}) {
+  const {
+    maxAttempts = 5,
+    delayMs = 5000,
+  } = options;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let pool;
+    try {
+      pool = await mysql.createPool(config);
+      await ensureSettingsSchema(pool);
+      return pool;
+    } catch (error) {
+      if (pool) {
+        try {
+          await pool.end();
+        } catch (closeError) {
+          console.error(
+            `Failed to close database pool after initialization error: ${closeError?.message || closeError}`,
+          );
+        }
+      }
+
+      console.error(
+        `Database initialization attempt ${attempt} failed: ${error?.message || error}`,
+      );
+
+      if (attempt === maxAttempts) {
+        throw new Error('Unable to initialize database connection after multiple attempts.');
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error('Unable to initialize database connection after multiple attempts.');
 }
