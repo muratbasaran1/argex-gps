@@ -53,6 +53,7 @@ Each template now ships with placeholder values for API URLs, database connectio
    - `docker compose up -d mysql` to boot MySQL.
    - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files. The API will reach MySQL on `mysql:3306` using the credentials and URLs you define in `server/.env` (copied from `server/.env.example`).
    - Tail logs as needed: `docker compose logs -f api`
+   - The server image now builds from `node:20-alpine` in a single stage and installs dependencies once during `docker compose build api`. Rebuild the `api` service whenever `server/package.json` changes so the `node_modules` volume picks up new packages.
 5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure MySQL from `.env` is running).
 6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
 7. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
