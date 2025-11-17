@@ -21,6 +21,8 @@ Copy the example environment files to `.env` and update values for your local se
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
+Each template includes placeholders for API URLs, database/cache connections, auth/JWT wiring, and map package paths so you can align all three apps with the same stack.
+
 ### Quick-start values
 The `.env.example` files are pre-filled to match the default Docker Compose topology:
 - API endpoints point at `http://api.argex-gps.localtest.me:4000` (`ws://` for websockets) so they align with the `api` service’s published port.
@@ -32,7 +34,8 @@ The `.env.example` files are pre-filled to match the default Docker Compose topo
 - **API endpoints**: `VITE_API_BASE_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, and `TILE_CDN_URL` should all point to the URL/port where you expose the API and tiles (the defaults line up with `docker compose` mapping port `4000`).
 - **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` declare how the API connects to Postgres/Redis. Defaults assume the Compose services `db` and `redis` and no TLS locally.
 - **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, plus the client-side `VITE_AUTH_*` and `AUTH_*` values must all reference the same identity provider/tenant.
-- **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, and `VITE_MAP_PACKAGE_INDEX_URL` define where map packages live on disk or via CDN for the server, admin panel, and mobile app.
+- **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, `MAP_PACKAGE_INDEX_PATH`, and `VITE_MAP_PACKAGE_INDEX_URL` define where map packages live on disk or via CDN for the server, admin panel, and mobile app.
+- **Copy tips**: keep API hostnames consistent across files so websockets and tile URLs resolve, reuse the same `JWT_*` issuer/audience everywhere, and point map storage variables to directories shared with Docker volumes (`./map-packages` on the host, `/var/lib/argex-gps/map-packages` in the API container).
 
 ### Critical variables by file
 - **admin/.env**: API endpoints (`VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_INDEX_URL`) should track the same host/port as the server; `VITE_MAP_PACKAGE_BASE_URL` points to the map download route. Auth settings (`VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, `VITE_AUTH_POST_LOGOUT_REDIRECT_URI`) must mirror the issuer/audience configured on the server.
