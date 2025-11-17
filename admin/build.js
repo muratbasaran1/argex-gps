@@ -17,17 +17,22 @@ const passthroughKeys = new Set([
   'OIDC_REDIRECT_URI',
 ]);
 
-function collectVitePassthroughKeys() {
-  const exampleEnvPath = path.join(adminDir, '.env.example');
-  const exampleValues = parseEnvFile(exampleEnvPath);
-
-  return Object.keys(exampleValues).reduce((set, key) => {
-    if (key.startsWith('VITE_')) {
-      set.add(key);
-    }
-    return set;
-  }, new Set());
-}
+const vitePassthroughKeys = new Set([
+  'VITE_API_BASE_URL',
+  'VITE_API_WEBSOCKET_URL',
+  'VITE_TILE_CDN_URL',
+  'VITE_MAP_PACKAGE_BASE_URL',
+  'VITE_MAP_PACKAGE_INDEX_URL',
+  'VITE_AUTH_DOMAIN',
+  'VITE_AUTH_CLIENT_ID',
+  'VITE_AUTH_AUDIENCE',
+  'VITE_AUTH_SCOPE',
+  'VITE_AUTH_REDIRECT_URI',
+  'VITE_AUTH_POST_LOGOUT_REDIRECT_URI',
+  'VITE_SETTINGS_DEFAULT_MAP_STYLE',
+  'VITE_SETTINGS_FEATURE_FLAGS',
+  'VITE_UI_BRAND',
+]);
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -51,16 +56,12 @@ function parseEnvFile(filePath) {
 }
 
 function loadEnvValues() {
-  const envFromFiles = [path.join(adminDir, '.env'), path.join(adminDir, '.env.local')]
+  return [path.join(adminDir, '.env'), path.join(adminDir, '.env.local')]
     .filter((filePath) => fs.existsSync(filePath))
     .reduce((acc, filePath) => ({ ...acc, ...parseEnvFile(filePath) }), {});
-
-  return { ...envFromFiles, ...process.env };
 }
 
 function collectWindowConfig(allEnv) {
-  const vitePassthroughKeys = collectVitePassthroughKeys();
-
   return Object.entries(allEnv).reduce((acc, [key, value]) => {
     if (value === undefined) return acc;
     if (vitePassthroughKeys.has(key)) {
