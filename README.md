@@ -29,7 +29,8 @@ Each template now ships with placeholder values for API URLs, database connectio
   - **API endpoints**: `VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_BASE_URL`, and `VITE_MAP_PACKAGE_INDEX_URL` populate the settings form so the admin UI talks to the right HTTP, websocket, and tile/map download hosts.
   - **Auth**: `VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, and `VITE_AUTH_POST_LOGOUT_REDIRECT_URI` configure the OIDC login flow the settings screen exposes to administrators.
   - **UI defaults**: `VITE_SETTINGS_DEFAULT_MAP_STYLE` and `VITE_SETTINGS_FEATURE_FLAGS` let the single settings page toggle UI options (e.g., map style or feature switches) without hard-coding them.
-  - **Build/export behavior**: Running `node admin/build.js` reads `admin/.env` (plus overrides in `admin/.env.local`) and whitelists all of the `VITE_*` keys above, stripping the prefix before exporting them to `window.*` in `admin/dist/env.js` so the settings form auto-populates on first load.
+  - **Branding and legacy API root**: `VITE_UI_BRAND` customizes the admin header label while `API_BASE_URL` is exported as-is for integrations that still rely on `window.API_BASE_URL`.
+  - **Build/export behavior**: Running `node admin/build.js` reads `admin/.env` (plus overrides in `admin/.env.local`) and whitelists all of the `VITE_*` keys above (plus `API_BASE_URL`), stripping the prefix before exporting them to `window.*` in `admin/dist/env.js` so the settings form auto-populates on first load.
 - **server/.env**
   - **API publicity**: `PUBLIC_API_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, and `TILE_CDN_URL` define the URLs returned to clients and echoed back in the settings UI.
   - **Database**: `DATABASE_URL` and `DATABASE_SCHEMA` document how the API reaches MySQL. These values appear in the admin settings page so operators can verify connectivity quickly.
