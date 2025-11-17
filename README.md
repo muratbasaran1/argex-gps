@@ -16,33 +16,29 @@ Argex GPS is an offline-first, Gaia GPS–style navigation and mapping experienc
 - Git for version control.
 
 ## Environment templates
-Copy the example environment files to `.env` and update values for your local setup:
+Copy the example environment files to `.env` and update values for your stack:
 - `cp admin/.env.example admin/.env`
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
-Each template includes placeholders for API URLs, database/cache connections, auth/JWT wiring, and map package paths so you can align all three apps with the same stack.
+Each template now ships with placeholder values for API URLs, database/cache connections, JWT/OIDC wiring, map package paths, and the keys surfaced in the one-page settings screen. Swap the example hostnames (`api.example.com`, `auth.example.com`, `downloads.example.com`) with the endpoints for your deployment.
 
-### Quick-start values
-The `.env.example` files are pre-filled to match the default Docker Compose topology:
-- API endpoints point at `http://api.argex-gps.localtest.me:4000` (`ws://` for websockets) so they align with the `api` service’s published port.
-- Database/Redis URLs target the Compose services `db` and `redis` with the shipped credentials (`postgres://argex:argex@db:5432/argex_gps` and `redis://redis:6379`).
-- Auth/JWT placeholders share the same issuer/audience (`argex-gps-api`) across admin, mobile, and server—replace the `*_CLIENT_ID`/`*_SECRET` entries and `JWT_SECRET` with real values from your IdP.
-- Map package paths default to the mounted volumes (`/var/lib/argex-gps/map-packages` inside the API container and `./map-packages/…` on the host) so uploaded archives and region folders are discoverable by all packages.
-
-### Critical variables to review
-- **API endpoints**: `VITE_API_BASE_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, and `TILE_CDN_URL` should all point to the URL/port where you expose the API and tiles (the defaults line up with `docker compose` mapping port `4000`).
-- **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` declare how the API connects to Postgres/Redis. Defaults assume the Compose services `db` and `redis` and no TLS locally.
-- **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, plus the client-side `VITE_AUTH_*` and `AUTH_*` values must all reference the same identity provider/tenant.
-- **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, `MAP_PACKAGE_INDEX_PATH`, and `VITE_MAP_PACKAGE_INDEX_URL` define where map packages live on disk or via CDN for the server, admin panel, and mobile app.
-- **Copy tips**: keep API hostnames consistent across files so websockets and tile URLs resolve, reuse the same `JWT_*` issuer/audience everywhere, and point map storage variables to directories shared with Docker volumes (`./map-packages` on the host, `/var/lib/argex-gps/map-packages` in the API container).
-
-### Critical variables by file
-- **admin/.env**: API endpoints (`VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_INDEX_URL`) should track the same host/port as the server; `VITE_MAP_PACKAGE_BASE_URL` points to the map download route. Auth settings (`VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, `VITE_AUTH_POST_LOGOUT_REDIRECT_URI`) must mirror the issuer/audience configured on the server.
-- **server/.env**: The API listens on `PORT` and advertises `PUBLIC_API_URL`/`API_BASE_URL`/`API_WEBSOCKET_URL` to clients. Database/cache connectivity lives in `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL`. JWT/OIDC settings (`JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`) define token validation for both server and clients. Map storage uses `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, and `MAP_PACKAGE_INDEX_PATH` to locate packaged tiles and their index.
-- **mobile/.env**: API endpoints (`API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, `TILE_CDN_URL`) must match the server hostname/IP accessible from the device or emulator. Auth entries (`AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, `AUTH_SCOPE`) should align with the same IdP tenant as the admin/server. Offline map paths (`MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_PACKAGE_INDEX_URL`, `MAP_PACKAGE_DOWNLOAD_URL`) control where packages are stored locally and where downloads are fetched.
-
-These examples deliberately use loopback/CNAME-friendly hostnames (e.g., `api.argex-gps.localtest.me`) to mirror the compose setup while avoiding collisions with real production domains.
+### Critical variables and how the settings page uses them
+- **admin/.env**
+  - **API endpoints**: `VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_BASE_URL`, and `VITE_MAP_PACKAGE_INDEX_URL` populate the settings form so the admin UI talks to the right HTTP, websocket, and tile/map download hosts.
+  - **Auth**: `VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, and `VITE_AUTH_POST_LOGOUT_REDIRECT_URI` configure the OIDC login flow the settings screen exposes to administrators.
+  - **UI defaults**: `VITE_SETTINGS_DEFAULT_MAP_STYLE` and `VITE_SETTINGS_FEATURE_FLAGS` let the single settings page toggle UI options (e.g., map style or feature switches) without hard-coding them.
+- **server/.env**
+  - **API publicity**: `PUBLIC_API_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, and `TILE_CDN_URL` define the URLs returned to clients and echoed back in the settings UI.
+  - **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` document how the API reaches Postgres/Redis. These values appear in the admin settings page so operators can verify connectivity quickly.
+  - **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, and `AUTH_CLIENT_SECRET` bind the API to your IdP and govern token validation shown on the settings page.
+  - **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, `MAP_PACKAGE_INDEX_PATH`, and `MAP_PACKAGE_DOWNLOAD_URL` tell the API where to read/write archives; the settings view references these to explain where uploads land.
+  - **Settings defaults**: `SETTINGS_DEFAULT_REGION`, `SETTINGS_DEFAULT_MAP_STYLE`, and `SETTINGS_FEATURE_FLAGS` feed the single-page settings UI with initial values shared between admin and mobile clients.
+- **mobile/.env**
+  - **API endpoints**: `API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, and `TILE_CDN_URL` prefill the device settings screen so the app can reach the server and tiles.
+  - **Auth**: `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, and `AUTH_SCOPE` mirror the same tenant configured on the server and surface in the settings page for quick validation.
+  - **Offline map storage**: `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_PACKAGE_INDEX_URL`, and `MAP_PACKAGE_DOWNLOAD_URL` drive how the client lists and downloads map regions, all editable from the single settings page.
+  - **Settings defaults**: `SETTINGS_DEFAULT_REGION` and `SETTINGS_DEFAULT_MAP_STYLE` control the initial selections shown to end users.
 
 ## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
