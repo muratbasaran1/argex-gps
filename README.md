@@ -21,11 +21,13 @@ Copy the example environment files to `.env` and update values for your local se
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
-Environment placeholders to update:
-- **API URLs**: `VITE_API_BASE_URL`, `API_BASE_URL`, and `TILE_CDN_URL` should reflect where your API is exposed (e.g., `http://localhost:4000`).
-- **Database/Cache**: `DATABASE_URL` and `REDIS_URL` default to the Compose service names (`db`, `redis`).
-- **Auth**: `JWT_SECRET`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, and `VITE_AUTH_*` should match your identity provider.
-- **Map storage**: `MAP_STORAGE_PATH`, `TILE_CACHE_PATH`, `MAP_PACKAGE_DIR`, and `MAP_PACKAGE_ARCHIVE` define where offline tile archives live on the server and mobile app.
+### Critical variables to review
+- **API endpoints**: `VITE_API_BASE_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, and `TILE_CDN_URL` should all point to the URL/port where you expose the API and tiles (the defaults line up with `docker compose` mapping port `4000`).
+- **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` declare how the API connects to Postgres/Redis. Defaults assume the Compose services `db` and `redis` and no TLS locally.
+- **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, plus the client-side `VITE_AUTH_*` and `AUTH_*` values must all reference the same identity provider/tenant.
+- **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, and `VITE_MAP_PACKAGE_INDEX_URL` define where map packages live on disk or via CDN for the server, admin panel, and mobile app.
+
+These examples deliberately use loopback/CNAME-friendly hostnames (e.g., `api.argex-gps.localtest.me`) to mirror the compose setup while avoiding collisions with real production domains.
 
 ## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
@@ -36,7 +38,7 @@ Environment placeholders to update:
    - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter)
 4. Start backend stack with Docker Compose from the repo root:
    - `docker compose up -d db redis` to boot dependencies.
-   - `docker compose up -d api` to run the API with mounted source and map volumes.
+   - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files.
    - Tail logs as needed: `docker compose logs -f api`
 5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure Postgres/Redis from `.env` are running).
 6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
