@@ -56,7 +56,7 @@ Each template now ships with placeholder values for API URLs, database connectio
    - Tail logs as needed: `docker compose logs -f api`
    - The server image now builds from `node:20-alpine` in a single stage and installs dependencies once during `docker compose build api`. Rebuild the `api` service whenever `server/package.json` changes so the `node_modules` volume picks up new packages.
 5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure MySQL from `.env` is running).
-6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
+6. Run the admin panel: `cd admin && npm run dev` to build `admin/dist` and serve it locally on port `4173`.
 7. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
 
 These steps will evolve as the codebase grows; see upcoming documentation updates for precise commands.
