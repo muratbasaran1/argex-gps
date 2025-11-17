@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./server
+    container_name: argex-api
+    env_file: server/.env
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./server:/app:cached
+      - map-packages:/var/lib/argex-gps/map-packages
+      - tile-cache:/var/lib/argex-gps/tile-cache
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+
+  db:
+    image: postgres:15
+    container_name: argex-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: argex
+      POSTGRES_PASSWORD: argex
+      POSTGRES_DB: argex_gps
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    container_name: argex-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  db-data:
+  redis-data:
+  map-packages:
+  tile-cache:
