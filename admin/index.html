@@ -55,6 +55,7 @@
     <script src="./env.js"></script>
     <script>
       const apiBase = (window.API_BASE_URL || '') + '/api/settings';
+      const authApiBase = (window.API_BASE_URL || '') + '/api/auth';
       const statusEl = document.getElementById('status');
       const form = document.getElementById('settings-form');
       const bodyEl = document.getElementById('settings-body');
@@ -119,6 +120,12 @@
       function status(text, isError) {
         statusEl.textContent = text;
         statusEl.style.color = isError ? 'red' : 'inherit';
+      }
+
+      function clearSession(message) {
+        persistTokens(null);
+        clearPkceState();
+        status(message);
       }
 
       function base64UrlEncode(buffer) {
@@ -390,10 +397,27 @@
         }
       });
 
-      logoutBtn.addEventListener('click', () => {
-        persistTokens(null);
-        clearPkceState();
-        status('Oturum kapatıldı.');
+      logoutBtn.addEventListener('click', async () => {
+        if (!tokens?.refresh_token) {
+          clearSession('Yerel oturum temizlendi. Yenileme tokenı bulunamadı.');
+          return;
+        }
+
+        try {
+          const res = await authorizedFetch(`${authApiBase}/logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tokens.refresh_token, token_type_hint: 'refresh_token' }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const message = data.detail ? `${data.message || 'Çıkış başarısız'}: ${data.detail}` : data.message;
+            throw new Error(message || 'Çıkış başarısız. Lütfen tekrar deneyin.');
+          }
+          clearSession('Oturum kapatıldı ve token revocation tamamlandı.');
+        } catch (error) {
+          status(error.message || 'Çıkış başarısız', true);
+        }
       });
 
       function prefillLoginForm() {
