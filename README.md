@@ -34,6 +34,11 @@ The `.env.example` files are pre-filled to match the default Docker Compose topo
 - **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, plus the client-side `VITE_AUTH_*` and `AUTH_*` values must all reference the same identity provider/tenant.
 - **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, and `VITE_MAP_PACKAGE_INDEX_URL` define where map packages live on disk or via CDN for the server, admin panel, and mobile app.
 
+### Critical variables by file
+- **admin/.env**: API endpoints (`VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_INDEX_URL`) should track the same host/port as the server; `VITE_MAP_PACKAGE_BASE_URL` points to the map download route. Auth settings (`VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, `VITE_AUTH_POST_LOGOUT_REDIRECT_URI`) must mirror the issuer/audience configured on the server.
+- **server/.env**: The API listens on `PORT` and advertises `PUBLIC_API_URL`/`API_BASE_URL`/`API_WEBSOCKET_URL` to clients. Database/cache connectivity lives in `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL`. JWT/OIDC settings (`JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`) define token validation for both server and clients. Map storage uses `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, and `MAP_PACKAGE_INDEX_PATH` to locate packaged tiles and their index.
+- **mobile/.env**: API endpoints (`API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, `TILE_CDN_URL`) must match the server hostname/IP accessible from the device or emulator. Auth entries (`AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, `AUTH_SCOPE`) should align with the same IdP tenant as the admin/server. Offline map paths (`MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_PACKAGE_INDEX_URL`, `MAP_PACKAGE_DOWNLOAD_URL`) control where packages are stored locally and where downloads are fetched.
+
 These examples deliberately use loopback/CNAME-friendly hostnames (e.g., `api.argex-gps.localtest.me`) to mirror the compose setup while avoiding collisions with real production domains.
 
 ## Installation & Running
