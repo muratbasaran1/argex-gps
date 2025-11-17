@@ -12,6 +12,7 @@ services:
       - redis
     volumes:
       - ./server:/app:cached
+      - api-node-modules:/app/node_modules
       - map-packages:/var/lib/argex-gps/map-packages
       - tile-cache:/var/lib/argex-gps/tile-cache
     working_dir: /app
@@ -44,3 +45,4 @@ volumes:
   redis-data:
   map-packages:
   tile-cache:
+  api-node-modules:
