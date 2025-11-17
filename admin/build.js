@@ -40,8 +40,11 @@ function parseEnvFile(filePath) {
 }
 
 function loadEnvValues() {
-  const envFromFiles = ['.env', '.env.local']
-    .map((file) => path.join(rootDir, file))
+  const envFromFiles = [
+    path.join(rootDir, '.env'), // optional fallback
+    path.join(adminDir, '.env'),
+    path.join(adminDir, '.env.local'),
+  ]
     .filter((filePath) => fs.existsSync(filePath))
     .reduce((acc, filePath) => ({ ...acc, ...parseEnvFile(filePath) }), {});
 

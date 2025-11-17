@@ -4,7 +4,7 @@ Bu dizin, statik admin panelini üretmek ve `.env` içeriğini tarayıcıya glob
 
 ## Ortam değişkenlerini aktarma
 
-1. Proje köküne `.env` veya `.env.local` dosyasını ekleyin. Aşağıdaki anahtarlar otomatik olarak `window.*` global değişkenlerine dönüştürülür:
+1. `admin/.env` dosyasını oluşturun (gerekirse `admin/.env.example` dosyasından kopyalayın). Yerel gelişimde geçici değerler için `admin/.env.local` ekleyebilirsiniz. Aşağıdaki anahtarlar otomatik olarak `window.*` global değişkenlere dönüştürülür:
    - `API_BASE_URL`
    - `OIDC_AUTHORIZE_URL`
    - `OIDC_TOKEN_URL`
@@ -21,4 +21,6 @@ Bu dizin, statik admin panelini üretmek ve `.env` içeriğini tarayıcıya glob
 
 3. Çıktı `admin/dist/` klasörüne yazılır. `env.js` dosyası yukarıdaki anahtarları `window.API_BASE_URL`, `window.OIDC_AUTHORIZE_URL` vb. olarak tanımlar; `index.html` dosyası aynı klasöre kopyalanır. Statik dosyaları bu klasörden servis edin.
 
-Sayfa yüklenirken `env.js` önce çalışır ve form alanları `.env` değerleriyle otomatik olarak dolar.
+`node admin/build.js` komutu hem yerel ortamda hem de CI'da aynı yolu izler; `admin/.env` (ve varsa `admin/.env.local`) değerlerini baz alır, yalnızca eksik anahtarlar için kök `.env` dosyasına opsiyonel olarak başvurur.
+
+Sayfa yüklenirken `env.js` önce çalışır ve ayar formundaki alanlar `admin/.env` içeriğiyle otomatik olarak dolar.
