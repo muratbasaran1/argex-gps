@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Button, ScrollView } from 'react-native';
+import { API_BASE_URL } from '@env';
 
 async function fetchSettings() {
-  const apiBase = process.env.API_BASE_URL || 'http://localhost:4000';
+  const apiBase = API_BASE_URL || 'http://localhost:4000';
   const res = await fetch(`${apiBase}/api/settings/public`);
   const data = await res.json();
   return data.settings || [];
@@ -30,6 +31,9 @@ export default function App() {
   return (
     <ScrollView style={{ padding: 24 }}>
       <Text style={{ fontSize: 18, marginBottom: 12 }}>Sunucu Ayarları</Text>
+      <Text style={{ marginBottom: 8 }}>
+        Aktif API tabanı: {API_BASE_URL || 'http://localhost:4000'}
+      </Text>
       <Text style={{ marginBottom: 12 }}>{status}</Text>
       <Button title="Yeniden Yükle" onPress={load} />
       {settings.map((item) => (

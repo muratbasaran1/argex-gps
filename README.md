@@ -41,6 +41,7 @@ Each template now ships with placeholder values for API URLs, database connectio
   - **Auth**: `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, and `AUTH_SCOPE` mirror the same tenant configured on the server and surface in the settings page for quick validation.
   - **Offline map storage**: `MAP_PACKAGE_DIR`, `MAP_PACKAGE_ARCHIVE`, `MAP_PACKAGE_INDEX_URL`, and `MAP_PACKAGE_DOWNLOAD_URL` drive how the client lists and downloads map regions, all editable from the single settings page.
   - **Settings defaults**: `SETTINGS_DEFAULT_REGION` and `SETTINGS_DEFAULT_MAP_STYLE` control the initial selections shown to end users.
+  - **Dotenv wiring**: The mobile client uses `react-native-dotenv` to inject values from `mobile/.env` at Metro build time. Ensure you have `mobile/.env` in place before running `npm start`/`expo start`; the `API_BASE_URL` value is surfaced on the app screen so you can confirm the compiled bundle picked it up.
 
 ## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
@@ -48,7 +49,7 @@ Each template now ships with placeholder values for API URLs, database connectio
 3. (Optional) Install dependencies locally per package if you want to run outside Docker:
    - **Admin panel**: `cd admin && npm install`
    - **Server/API**: `cd server && npm install`
-   - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter)
+   - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter). For Expo/React Native, the bundler reads `mobile/.env` through `react-native-dotenv`; restart Metro if you edit env values.
 4. Start backend stack with Docker Compose from the repo root:
    - `docker compose up -d mysql` to boot MySQL.
    - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files. The API will reach MySQL on `mysql:3306` using the credentials and URLs you define in `server/.env` (copied from `server/.env.example`).
