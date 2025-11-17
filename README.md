@@ -16,7 +16,8 @@ Argex GPS is an offline-first, Gaia GPS–style navigation and mapping experienc
 - Git for version control.
 
 ## Environment templates
-Copy the example environment files to `.env` and update values for your stack:
+Copy the example environment files to `.env` and update values for your stack. The `*.example` files are templates only; Docker
+Compose uses your real `.env` copies (for example, `server/.env`) at runtime:
 - `cp admin/.env.example admin/.env`
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
@@ -49,7 +50,7 @@ Each template now ships with placeholder values for API URLs, database connectio
    - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter)
 4. Start backend stack with Docker Compose from the repo root:
    - `docker compose up -d mysql` to boot MySQL.
-   - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files. The API will reach MySQL on `mysql:3306` using the credentials in `server/.env.example`.
+   - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files. The API will reach MySQL on `mysql:3306` using the credentials and URLs you define in `server/.env` (copied from `server/.env.example`).
    - Tail logs as needed: `docker compose logs -f api`
 5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure MySQL from `.env` is running).
 6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
