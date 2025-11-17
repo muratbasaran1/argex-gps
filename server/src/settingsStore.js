@@ -21,18 +21,30 @@ db.prepare(
     key TEXT NOT NULL UNIQUE,
     value TEXT NOT NULL,
     description TEXT DEFAULT '',
+    secret INTEGER DEFAULT 0,
     updatedAt TEXT NOT NULL
   )`
 ).run();
 db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_key ON settings(key);').run();
 
-const selectAll = db.prepare('SELECT id, key, value, description, updatedAt FROM settings ORDER BY key');
-const selectById = db.prepare('SELECT id, key, value, description, updatedAt FROM settings WHERE id = ?');
+const tableInfo = db.prepare('PRAGMA table_info(settings);').all();
+const hasSecretColumn = tableInfo.some((column) => column.name === 'secret');
+if (!hasSecretColumn) {
+  db.prepare('ALTER TABLE settings ADD COLUMN secret INTEGER DEFAULT 0').run();
+  db.prepare('UPDATE settings SET secret = 0 WHERE secret IS NULL').run();
+}
+
+const selectAll = db.prepare(
+  'SELECT id, key, value, description, secret, updatedAt FROM settings ORDER BY key'
+);
+const selectById = db.prepare(
+  'SELECT id, key, value, description, secret, updatedAt FROM settings WHERE id = ?'
+);
 const insertSetting = db.prepare(
-  'INSERT INTO settings (id, key, value, description, updatedAt) VALUES (?, ?, ?, ?, ?)' 
+  'INSERT INTO settings (id, key, value, description, secret, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
 );
 const updateSettingStmt = db.prepare(
-  'UPDATE settings SET key = ?, value = ?, description = ?, updatedAt = ? WHERE id = ?'
+  'UPDATE settings SET key = ?, value = ?, description = ?, secret = ?, updatedAt = ? WHERE id = ?'
 );
 const deleteSettingStmt = db.prepare('DELETE FROM settings WHERE id = ?');
 
@@ -42,6 +54,7 @@ function sanitizeStored(setting) {
     ...setting,
     key: typeof setting.key === 'string' ? setting.key.trim() : setting.key,
     value: typeof setting.value === 'string' ? setting.value.trim() : setting.value,
+    secret: Boolean(setting.secret),
     description:
       typeof setting.description === 'string' ? setting.description.trim() : setting.description || '',
   };
@@ -63,11 +76,19 @@ export async function createSetting(payload) {
     key: payload.key,
     value: payload.value,
     description: payload.description ?? '',
+    secret: Boolean(payload.secret),
     updatedAt: new Date().toISOString(),
   };
 
   try {
-    insertSetting.run(setting.id, setting.key, setting.value, setting.description, setting.updatedAt);
+    insertSetting.run(
+      setting.id,
+      setting.key,
+      setting.value,
+      setting.description,
+      setting.secret ? 1 : 0,
+      setting.updatedAt
+    );
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       throw new SettingConflictError(payload.key);
@@ -86,6 +107,7 @@ export async function updateSetting(id, payload) {
     ...existing,
     ...payload,
     description: payload.description ?? existing.description ?? '',
+    secret: typeof payload.secret === 'undefined' ? existing.secret : Boolean(payload.secret),
     updatedAt: new Date().toISOString(),
   };
 
@@ -94,6 +116,7 @@ export async function updateSetting(id, payload) {
       updated.key,
       updated.value,
       updated.description,
+      updated.secret ? 1 : 0,
       updated.updatedAt,
       id
     );

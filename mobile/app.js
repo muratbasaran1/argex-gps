@@ -3,7 +3,7 @@ import { View, Text, Button, ScrollView } from 'react-native';
 
 async function fetchSettings() {
   const apiBase = process.env.API_BASE_URL || 'http://localhost:4000';
-  const res = await fetch(`${apiBase}/api/settings`);
+  const res = await fetch(`${apiBase}/api/settings/public`);
   const data = await res.json();
   return data.settings || [];
 }
@@ -33,10 +33,9 @@ export default function App() {
       <Text style={{ marginBottom: 12 }}>{status}</Text>
       <Button title="Yeniden Yükle" onPress={load} />
       {settings.map((item) => (
-        <View key={item.id} style={{ paddingVertical: 8 }}>
-          <Text>Key: {item.key}</Text>
-          <Text>Value: {item.value}</Text>
-          <Text>Açıklama: {item.description}</Text>
+        <View key={item.key} style={{ paddingVertical: 8 }}>
+          <Text>{item.key}</Text>
+          <Text selectable>{item.value}</Text>
         </View>
       ))}
     </ScrollView>

@@ -11,6 +11,14 @@
       th, td { padding: 0.5rem; border-bottom: 1px solid #ddd; }
       .actions button { margin-right: 0.5rem; }
       .status { margin-bottom: 1rem; }
+      .pill {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        background: #555;
+        color: #fff;
+        font-size: 0.85rem;
+      }
     </style>
   </head>
   <body>
@@ -20,12 +28,13 @@
       <label>Key: <input name="key" required /></label>
       <label>Value: <input name="value" required /></label>
       <label>Description: <input name="description" /></label>
+      <label><input type="checkbox" name="secret" /> Gizli alan</label>
       <button type="submit">Kaydet</button>
     </form>
 
     <table>
       <thead>
-        <tr><th>Key</th><th>Value</th><th>Description</th><th>Güncellendi</th><th>Actions</th></tr>
+        <tr><th>Key</th><th>Value</th><th>Gizli?</th><th>Description</th><th>Güncellendi</th><th>Actions</th></tr>
       </thead>
       <tbody id="settings-body"></tbody>
     </table>
@@ -54,16 +63,48 @@
         bodyEl.innerHTML = '';
         settings.forEach((item) => {
           const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${item.key}</td>
-            <td>${item.value}</td>
-            <td>${item.description || ''}</td>
-            <td>${item.updatedAt || ''}</td>
-            <td class="actions">
-              <button data-action="edit">Düzenle</button>
-              <button data-action="delete">Sil</button>
-            </td>`;
+          const keyCell = document.createElement('td');
+          keyCell.textContent = item.key;
+
+          const valueCell = document.createElement('td');
+          if (item.masked) {
+            const pill = document.createElement('span');
+            pill.className = 'pill';
+            pill.textContent = 'gizli';
+            valueCell.appendChild(pill);
+          } else {
+            valueCell.textContent = item.value;
+          }
+
+          const secretCell = document.createElement('td');
+          secretCell.textContent = item.masked ? 'Evet' : 'Hayır';
+
+          const descCell = document.createElement('td');
+          descCell.textContent = item.description || '';
+
+          const updatedCell = document.createElement('td');
+          updatedCell.textContent = item.updatedAt || '';
+
+          const actionsCell = document.createElement('td');
+          actionsCell.className = 'actions';
+          const editBtn = document.createElement('button');
+          editBtn.dataset.action = 'edit';
+          editBtn.textContent = 'Düzenle';
+          const deleteBtn = document.createElement('button');
+          deleteBtn.dataset.action = 'delete';
+          deleteBtn.textContent = 'Sil';
+          actionsCell.appendChild(editBtn);
+          actionsCell.appendChild(deleteBtn);
+
+          row.appendChild(keyCell);
+          row.appendChild(valueCell);
+          row.appendChild(secretCell);
+          row.appendChild(descCell);
+          row.appendChild(updatedCell);
+          row.appendChild(actionsCell);
           row.dataset.id = item.id;
+          row.dataset.masked = item.masked;
+          row.dataset.secret = item.secret;
           bodyEl.appendChild(row);
         });
       }
@@ -71,8 +112,21 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
-        const payload = Object.fromEntries(formData.entries());
         const existingRow = bodyEl.querySelector('tr[data-editing="true"]');
+        const payload = {
+          key: (formData.get('key') || '').trim(),
+          value: (formData.get('value') || '').trim(),
+          description: (formData.get('description') || '').trim(),
+          secret: form.secret.checked,
+        };
+
+        if (!payload.description) delete payload.description;
+        if (existingRow && !payload.value) delete payload.value;
+        if (!existingRow && !payload.value) {
+          status('Value zorunludur', true);
+          return;
+        }
+
         const method = existingRow ? 'PUT' : 'POST';
         const targetId = existingRow ? existingRow.dataset.id : '';
         const res = await fetch(`${apiBase}/${targetId}`, {
@@ -86,6 +140,8 @@
           return;
         }
         form.reset();
+        form.value.placeholder = '';
+        form.secret.checked = false;
         if (existingRow) existingRow.removeAttribute('data-editing');
         await fetchSettings();
       });
@@ -108,8 +164,15 @@
         if (action === 'edit') {
           row.dataset.editing = 'true';
           form.key.value = row.children[0].textContent;
-          form.value.value = row.children[1].textContent;
-          form.description.value = row.children[2].textContent;
+          form.description.value = row.children[3].textContent;
+          form.secret.checked = row.dataset.secret === 'true';
+          if (row.dataset.masked === 'true') {
+            form.value.value = '';
+            form.value.placeholder = 'Yeni değer girin';
+          } else {
+            form.value.value = row.children[1].textContent;
+            form.value.placeholder = '';
+          }
           status('Düzenleme modunda');
         }
       });

@@ -22,6 +22,7 @@ export const createSettingSchema = z.object({
   key: keySchema,
   value: valueSchema,
   description: descriptionSchema.optional().default(''),
+  secret: z.boolean({ invalid_type_error: 'secret must be a boolean' }).optional().default(false),
 });
 
 export const updateSettingSchema = z
@@ -29,6 +30,7 @@ export const updateSettingSchema = z
     key: keySchema.optional(),
     value: valueSchema.optional(),
     description: descriptionSchema.optional(),
+    secret: z.boolean({ invalid_type_error: 'secret must be a boolean' }).optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.key && typeof value.value === 'undefined' && typeof value.description === 'undefined') {
