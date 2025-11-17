@@ -4,6 +4,8 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "lint": "npx expo-doctor",
+    "test": "npm run lint",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
