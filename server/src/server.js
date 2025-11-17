@@ -2,7 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { corsMiddleware, requireAdmin } from './authMiddleware.js';
-import settingsRoutes from './settingsRoutes.js';
+import settingsRoutes, { publicSettingsRouter } from './settingsRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -10,6 +10,7 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use(corsMiddleware);
 
+app.use('/api/settings/public', publicSettingsRouter);
 app.use('/api/settings', requireAdmin, settingsRoutes);
 
 app.get('/health', (req, res) => {
