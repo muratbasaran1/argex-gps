@@ -21,6 +21,13 @@ Copy the example environment files to `.env` and update values for your local se
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
+### Quick-start values
+The `.env.example` files are pre-filled to match the default Docker Compose topology:
+- API endpoints point at `http://api.argex-gps.localtest.me:4000` (`ws://` for websockets) so they align with the `api` service’s published port.
+- Database/Redis URLs target the Compose services `db` and `redis` with the shipped credentials (`postgres://argex:argex@db:5432/argex_gps` and `redis://redis:6379`).
+- Auth/JWT placeholders share the same issuer/audience (`argex-gps-api`) across admin, mobile, and server—replace the `*_CLIENT_ID`/`*_SECRET` entries and `JWT_SECRET` with real values from your IdP.
+- Map package paths default to the mounted volumes (`/var/lib/argex-gps/map-packages` inside the API container and `./map-packages/…` on the host) so uploaded archives and region folders are discoverable by all packages.
+
 ### Critical variables to review
 - **API endpoints**: `VITE_API_BASE_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, `PUBLIC_API_URL`, and `TILE_CDN_URL` should all point to the URL/port where you expose the API and tiles (the defaults line up with `docker compose` mapping port `4000`).
 - **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` declare how the API connects to Postgres/Redis. Defaults assume the Compose services `db` and `redis` and no TLS locally.
