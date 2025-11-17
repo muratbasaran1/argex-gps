@@ -1,0 +1,9 @@
+{
+  "name": "argex-gps-admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run build && python3 -m http.server 4173 --directory dist",
+    "build": "node build.js"
+  }
+}
