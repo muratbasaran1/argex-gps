@@ -11,6 +11,7 @@ import {
 import { createSettingSchema, updateSettingSchema } from './settingsSchema.js';
 
 const router = Router();
+const publicSettingsRouter = Router();
 const CLIENT_ALLOWED_PREFIXES = ['public.', 'public_', 'url.', 'url_', 'cdn.', 'cdn_'];
 
 function respondValidation(res, error) {
@@ -47,7 +48,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/public', async (req, res, next) => {
+publicSettingsRouter.get('/', async (req, res, next) => {
   try {
     const settings = await listSettings();
     const visibleSettings = settings
@@ -126,4 +127,5 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+export { publicSettingsRouter };
 export default router;
