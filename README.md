@@ -10,8 +10,8 @@ Argex GPS is an offline-first, Gaia GPS–style navigation and mapping experienc
 - **Mapping Pipeline**: Tools to ingest, tile, and package map datasets for offline delivery.
 
 ## Prerequisites
-- Modern Node.js LTS and npm/yarn for the admin panel and tooling.
-- A recent mobile toolchain (e.g., React Native/Expo or Flutter SDK) for the client app.
+- Node.js 20.x LTS with npm 10 for the admin panel, server API, and tooling (CI runs with this stack).
+- Expo SDK 51 (React Native 0.74) or a compatible mobile toolchain for the client app.
 - Docker and Docker Compose for local server/API and database orchestration.
 - Git for version control.
 
@@ -60,6 +60,11 @@ Each template now ships with placeholder values for API URLs, database connectio
 7. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
 
 These steps will evolve as the codebase grows; see upcoming documentation updates for precise commands.
+
+## Continuous Integration
+- GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint/test scripts for `admin/`, `server/`, and `mobile/` against Node.js 20.
+- The server job provisions a lightweight `mysql:8` service to validate settings flows; failing checks block pull requests.
+- Each job hydrates `.env` files from the included `*.env.example` templates to provide placeholder secrets and endpoints.
 
 ## Map data packages
 - Admins can upload prepared map tile archives to the backend storage directory defined by `MAP_STORAGE_PATH` in `server/.env` (defaults to `/var/lib/argex-gps/map-packages`, mounted from the `map-packages` volume in Docker).
