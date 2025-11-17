@@ -17,7 +17,17 @@ const passthroughKeys = new Set([
   'OIDC_REDIRECT_URI',
 ]);
 
-const allowedViteKeys = new Set(['VITE_UI_BRAND']);
+function collectVitePassthroughKeys() {
+  const exampleEnvPath = path.join(adminDir, '.env.example');
+  const exampleValues = parseEnvFile(exampleEnvPath);
+
+  return Object.keys(exampleValues).reduce((set, key) => {
+    if (key.startsWith('VITE_')) {
+      set.add(key);
+    }
+    return set;
+  }, new Set());
+}
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -49,9 +59,11 @@ function loadEnvValues() {
 }
 
 function collectWindowConfig(allEnv) {
+  const vitePassthroughKeys = collectVitePassthroughKeys();
+
   return Object.entries(allEnv).reduce((acc, [key, value]) => {
     if (value === undefined) return acc;
-    if (allowedViteKeys.has(key)) {
+    if (vitePassthroughKeys.has(key)) {
       acc[key.replace(/^VITE_/, '')] = value;
       return acc;
     }
