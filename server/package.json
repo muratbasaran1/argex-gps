@@ -4,6 +4,7 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
+    "dev": "node src/server.js",
     "start": "node src/server.js",
     "lint": "node --check src/*.js src/**/*.js"
   },
