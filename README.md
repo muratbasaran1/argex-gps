@@ -21,7 +21,7 @@ Copy the example environment files to `.env` and update values for your stack:
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
-Each template now ships with placeholder values for API URLs, database/cache connections, JWT/OIDC wiring, map package paths, and the keys surfaced in the one-page settings screen. Swap the example hostnames (`api.example.com`, `auth.example.com`, `downloads.example.com`) with the endpoints for your deployment.
+Each template now ships with placeholder values for API URLs, database connections, JWT/OIDC wiring, map package paths, and the keys surfaced in the one-page settings screen. Swap the example hostnames (`api.example.com`, `auth.example.com`, `downloads.example.com`) with the endpoints for your deployment.
 
 ### Critical variables and how the settings page uses them
 - **admin/.env**
@@ -30,7 +30,7 @@ Each template now ships with placeholder values for API URLs, database/cache con
   - **UI defaults**: `VITE_SETTINGS_DEFAULT_MAP_STYLE` and `VITE_SETTINGS_FEATURE_FLAGS` let the single settings page toggle UI options (e.g., map style or feature switches) without hard-coding them.
 - **server/.env**
   - **API publicity**: `PUBLIC_API_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, and `TILE_CDN_URL` define the URLs returned to clients and echoed back in the settings UI.
-  - **Database/cache**: `DATABASE_URL`, `DATABASE_SCHEMA`, `REDIS_URL`, and `REDIS_TLS_URL` document how the API reaches Postgres/Redis. These values appear in the admin settings page so operators can verify connectivity quickly.
+  - **Database**: `DATABASE_URL` and `DATABASE_SCHEMA` document how the API reaches MySQL. These values appear in the admin settings page so operators can verify connectivity quickly.
   - **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, and `AUTH_CLIENT_SECRET` bind the API to your IdP and govern token validation shown on the settings page.
   - **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, `MAP_PACKAGE_INDEX_PATH`, and `MAP_PACKAGE_DOWNLOAD_URL` tell the API where to read/write archives; the settings view references these to explain where uploads land.
   - **Settings defaults**: `SETTINGS_DEFAULT_REGION`, `SETTINGS_DEFAULT_MAP_STYLE`, and `SETTINGS_FEATURE_FLAGS` feed the single-page settings UI with initial values shared between admin and mobile clients.
@@ -48,10 +48,10 @@ Each template now ships with placeholder values for API URLs, database/cache con
    - **Server/API**: `cd server && npm install`
    - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter)
 4. Start backend stack with Docker Compose from the repo root:
-   - `docker compose up -d db redis` to boot dependencies.
-   - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files.
+   - `docker compose up -d mysql` to boot MySQL.
+   - `docker compose up -d api` to run the API with mounted source and map volumes. This binds the API to port `4000`, matching `PUBLIC_API_URL`, `VITE_API_BASE_URL`, and `API_BASE_URL` in the example env files. The API will reach MySQL on `mysql:3306` using the credentials in `server/.env.example`.
    - Tail logs as needed: `docker compose logs -f api`
-5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure Postgres/Redis from `.env` are running).
+5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure MySQL from `.env` is running).
 6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
 7. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
 
@@ -75,7 +75,7 @@ These steps will evolve as the codebase grows; see upcoming documentation update
   ```
 
 ## Sync test flow (example)
-1. Start dependencies: `docker compose up -d db redis`.
+1. Start dependencies: `docker compose up -d mysql`.
 2. Start the API: `docker compose up -d api` and wait for migrations/startup logs.
 3. Run the admin panel (`npm run dev` in `admin`) and create a test user plus a sample map package upload.
 4. Verify map packages are visible under `/var/lib/argex-gps/map-packages` inside the `api` container: `docker compose exec api ls /var/lib/argex-gps/map-packages`.

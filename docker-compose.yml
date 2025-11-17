@@ -8,8 +8,13 @@ services:
     ports:
       - "4000:4000"
     depends_on:
-      - db
-      - redis
+      - mysql
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: argex
+      DB_PASSWORD: argex
+      DB_NAME: argex_gps
     volumes:
       - ./server:/app:cached
       - api-node-modules:/app/node_modules
@@ -18,31 +23,23 @@ services:
     working_dir: /app
     command: ["npm", "run", "dev"]
 
-  db:
-    image: postgres:15
-    container_name: argex-db
+  mysql:
+    image: mysql:8
+    container_name: argex-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_USER: argex
-      POSTGRES_PASSWORD: argex
-      POSTGRES_DB: argex_gps
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: argex_gps
+      MYSQL_USER: argex
+      MYSQL_PASSWORD: argex
+    command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - mysql-data:/var/lib/mysql
     ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7
-    container_name: argex-redis
-    restart: unless-stopped
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6379:6379"
+      - "3306:3306"
 
 volumes:
-  db-data:
-  redis-data:
+  mysql-data:
   map-packages:
   tile-cache:
   api-node-modules:
