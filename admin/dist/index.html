@@ -52,15 +52,66 @@
       <tbody id="settings-body"></tbody>
     </table>
 
+    <section class="maps">
+      <h2>Harita Manifesti ve Rota Testleri</h2>
+      <div>
+        <button id="manifest-btn" type="button">Public manifesti getir</button>
+        <button id="tile-btn" type="button">Tile index (region=demo)</button>
+        <pre id="maps-output" style="white-space: pre-wrap"></pre>
+      </div>
+      <form id="route-form" style="margin-top: 1rem">
+        <label>Rota Adı: <input name="routeName" required /></label>
+        <label>Region: <input name="routeRegion" value="demo" required /></label>
+        <label>Açıklama: <input name="routeDescription" /></label>
+        <button type="submit">Rota yarat (protected)</button>
+      </form>
+      <pre id="route-output" style="white-space: pre-wrap"></pre>
+    </section>
+
+    <section class="teams" style="margin-top: 1rem">
+      <h2>Takım ve Telemetri Örnekleri</h2>
+      <form id="team-form">
+        <label>Takım Adı: <input name="teamName" required /></label>
+        <label>Callsign: <input name="callSign" /></label>
+        <button type="submit">Takım oluştur (protected)</button>
+      </form>
+      <form id="location-form" style="margin-top: 0.5rem">
+        <label>Takım ID: <input name="teamId" required placeholder="Yukarıdaki çıktıyı kullanın" /></label>
+        <label>Lat: <input name="latitude" required type="number" step="0.000001" /></label>
+        <label>Lng: <input name="longitude" required type="number" step="0.000001" /></label>
+        <button type="submit">Konum kaydet (protected)</button>
+      </form>
+      <form id="telemetry-form" style="margin-top: 0.5rem">
+        <label>Takım ID: <input name="teamId" required /></label>
+        <label>Batarya %: <input name="battery" type="number" step="0.1" /></label>
+        <label>Nabız: <input name="heartRate" type="number" /></label>
+        <label>Not: <input name="note" /></label>
+        <button type="submit">Telemetri kaydet (protected)</button>
+      </form>
+      <pre id="team-output" style="white-space: pre-wrap"></pre>
+    </section>
+
     <script src="./env.js"></script>
     <script>
       const apiBase = (window.API_BASE_URL || '') + '/api/settings';
       const authApiBase = (window.API_BASE_URL || '') + '/api/auth';
+      const mapsApiBase = (window.API_BASE_URL || '') + '/api/maps';
+      const syncApiBase = (window.API_BASE_URL || '') + '/api/sync';
+      const teamsApiBase = (window.API_BASE_URL || '') + '/api/teams';
       const statusEl = document.getElementById('status');
       const form = document.getElementById('settings-form');
       const bodyEl = document.getElementById('settings-body');
       const loginForm = document.getElementById('login-form');
       const logoutBtn = document.getElementById('logout-btn');
+      const manifestBtn = document.getElementById('manifest-btn');
+      const tileBtn = document.getElementById('tile-btn');
+      const mapsOutput = document.getElementById('maps-output');
+      const routeForm = document.getElementById('route-form');
+      const routeOutput = document.getElementById('route-output');
+      const teamForm = document.getElementById('team-form');
+      const locationForm = document.getElementById('location-form');
+      const telemetryForm = document.getElementById('telemetry-form');
+      const teamOutput = document.getElementById('team-output');
       const configStorageKey = 'settingsAuthConfig';
       const pkceStorageKey = 'settingsPkceState';
       const legacyTokenStorageKey = 'settingsTokens';
@@ -252,6 +303,116 @@
         return response;
       }
 
+      async function fetchManifestPreview() {
+        mapsOutput.textContent = 'Manifest çekiliyor...';
+        const res = await fetch(`${mapsApiBase}/public/tiles/manifest`);
+        const data = await res.json();
+        mapsOutput.textContent = JSON.stringify(data, null, 2);
+
+        try {
+          const queueRes = await authorizedFetch(`${syncApiBase}/queue`);
+          const queueData = await queueRes.json();
+          mapsOutput.textContent += `\n\nSync Kuyruğu:\n${JSON.stringify(queueData.queue || [], null, 2)}`;
+        } catch (error) {
+          mapsOutput.textContent += `\n\n(Not) Sync kuyruğu sadece yetkili çağrılarda gelir: ${error.message}`;
+        }
+      }
+
+      async function fetchTileIndex() {
+        mapsOutput.textContent = 'Tile index çekiliyor...';
+        const res = await fetch(`${mapsApiBase}/public/tiles/demo/index`);
+        const data = await res.json();
+        mapsOutput.textContent = JSON.stringify(data, null, 2);
+      }
+
+      async function createRouteFromForm(event) {
+        event.preventDefault();
+        const formData = new FormData(routeForm);
+        const payload = {
+          name: formData.get('routeName'),
+          region: formData.get('routeRegion'),
+          description: formData.get('routeDescription') || '',
+        };
+        routeOutput.textContent = 'Kaydediliyor...';
+        try {
+          const res = await authorizedFetch(`${mapsApiBase}/routes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          routeOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          routeOutput.textContent = error.message;
+        }
+      }
+
+      async function createTeam(event) {
+        event.preventDefault();
+        const formData = new FormData(teamForm);
+        const payload = {
+          name: formData.get('teamName'),
+          callSign: formData.get('callSign') || '',
+        };
+        teamOutput.textContent = 'Takım oluşturuluyor...';
+        try {
+          const res = await authorizedFetch(`${teamsApiBase}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          teamOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          teamOutput.textContent = error.message;
+        }
+      }
+
+      async function submitLocation(event) {
+        event.preventDefault();
+        const formData = new FormData(locationForm);
+        const teamId = formData.get('teamId');
+        const payload = {
+          latitude: Number(formData.get('latitude')),
+          longitude: Number(formData.get('longitude')),
+        };
+        teamOutput.textContent = 'Konum gönderiliyor...';
+        try {
+          const res = await authorizedFetch(`${teamsApiBase}/${teamId}/locations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          teamOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          teamOutput.textContent = error.message;
+        }
+      }
+
+      async function submitTelemetry(event) {
+        event.preventDefault();
+        const formData = new FormData(telemetryForm);
+        const teamId = formData.get('teamId');
+        const payload = {
+          batteryLevel: formData.get('battery') ? Number(formData.get('battery')) : null,
+          heartRate: formData.get('heartRate') ? Number(formData.get('heartRate')) : null,
+          note: formData.get('note') || '',
+        };
+        teamOutput.textContent = 'Telemetri gönderiliyor...';
+        try {
+          const res = await authorizedFetch(`${teamsApiBase}/${teamId}/telemetry`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          teamOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          teamOutput.textContent = error.message;
+        }
+      }
+
       async function fetchSettings() {
         status('Yükleniyor...');
         const res = await authorizedFetch(apiBase);
@@ -386,6 +547,13 @@
           status('Düzenleme modunda');
         }
       });
+
+      manifestBtn.addEventListener('click', fetchManifestPreview);
+      tileBtn.addEventListener('click', fetchTileIndex);
+      routeForm.addEventListener('submit', createRouteFromForm);
+      teamForm.addEventListener('submit', createTeam);
+      locationForm.addEventListener('submit', submitLocation);
+      telemetryForm.addEventListener('submit', submitTelemetry);
 
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();

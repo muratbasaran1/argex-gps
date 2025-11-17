@@ -4,6 +4,9 @@ import morgan from 'morgan';
 import { corsMiddleware, requireAdmin } from './authMiddleware.js';
 import authRoutes from './authRoutes.js';
 import settingsRoutes, { publicSettingsRouter } from './settingsRoutes.js';
+import mapsRoutes, { publicMapsRouter } from './mapsRoutes.js';
+import syncRoutes from './syncRoutes.js';
+import teamsRoutes from './teamsRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -12,8 +15,12 @@ app.use(morgan('dev'));
 app.use(corsMiddleware);
 
 app.use('/api/settings/public', publicSettingsRouter);
+app.use('/api/maps/public', publicMapsRouter);
 app.use('/api/auth', requireAdmin, authRoutes);
 app.use('/api/settings', requireAdmin, settingsRoutes);
+app.use('/api/maps', requireAdmin, mapsRoutes);
+app.use('/api/sync', requireAdmin, syncRoutes);
+app.use('/api/teams', requireAdmin, teamsRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
