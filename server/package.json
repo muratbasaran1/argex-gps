@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "lint": "node --check src/*.js src/**/*.js"
+    "lint": "node --check src/*.js src/**/*.js",
+    "test": "node --test src/settingsStore.test.js src/settingsRoutes.test.js"
   },
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
     "express": "^4.19.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
+    "mysql2": "^3.11.3",
     "uuid": "^9.0.1",
     "zod": "^3.23.8"
   }
