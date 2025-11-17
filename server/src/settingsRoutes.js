@@ -111,6 +111,16 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(404).json({ message: 'setting not found' });
     }
     const cleanup = await cleanDerivedArtifacts(removed.key);
+    const hasCleanupErrors = Boolean(cleanup.failures.length);
+
+    if (hasCleanupErrors) {
+      return res.status(500).json({
+        removed: maskSetting(removed),
+        cleanup,
+        message: 'setting deleted but some derived artifacts could not be cleaned',
+      });
+    }
+
     res.json({ removed: maskSetting(removed), cleanup });
   } catch (error) {
     next(error);
