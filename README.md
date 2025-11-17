@@ -9,21 +9,43 @@ Argex GPS is an offline-first, Gaia GPS–style navigation and mapping experienc
 - **Admin Panel**: Web dashboard to upload map tiles, approve user roles, and review usage/telemetry.
 - **Mapping Pipeline**: Tools to ingest, tile, and package map datasets for offline delivery.
 
-## Prerequisites (preliminary)
+## Prerequisites
 - Modern Node.js LTS and npm/yarn for the admin panel and tooling.
 - A recent mobile toolchain (e.g., React Native/Expo or Flutter SDK) for the client app.
 - Docker and Docker Compose for local server/API and database orchestration.
 - Git for version control.
 
-## Installation & Running (preliminary)
+## Environment templates
+Copy the example environment files to `.env` and update values for your local setup:
+- `cp admin/.env.example admin/.env`
+- `cp server/.env.example server/.env`
+- `cp mobile/.env.example mobile/.env`
+
+## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
-2. Install dependencies for each package (admin panel, server, mobile): `npm install` / `yarn install` / platform equivalents.
-3. Copy example environment files (e.g., `.env.example` to `.env`) and fill in API keys, map providers, and database credentials.
-4. Start backend services: `docker compose up -d` (API, database, tile storage).
-5. Run the admin panel: `npm run dev` (or framework equivalent) and visit the indicated localhost port.
-6. Launch the mobile/client app with your chosen toolchain (e.g., `expo start` or `flutter run`).
+2. Install dependencies per package:
+   - **Admin panel**: `cd admin && npm install`
+   - **Server/API**: `cd server && npm install` (or `docker compose build` if containerized)
+   - **Mobile app**: `cd mobile && npm install` (for React Native/Expo) or `flutter pub get` (for Flutter)
+3. Start backend services:
+   - With Docker: `cd server && docker compose up -d` (API, database, tile storage)
+   - Without Docker: `cd server && npm run dev` (ensure Postgres/Redis from `.env` are running)
+4. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
+5. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
 
 These steps will evolve as the codebase grows; see upcoming documentation updates for precise commands.
+
+## Map data packages
+- Admins can upload prepared map tile archives to the backend storage directory defined by `MAP_STORAGE_PATH` in `server/.env`.
+- Developers can download packaged regions from an internal bucket or CDN, place them under `server/data/map-packages`, and rebuild the tile index if needed.
+- For mobile testing, sideload a `.tgz`/`.zip` package into the path configured by `MAP_PACKAGE_DIR` in `mobile/.env` or trigger a download from the admin API endpoint (e.g., `/maps/:regionId/download`).
+
+## Sync test flow (example)
+1. Start the backend services (`docker compose up` or `npm run dev` in `server`).
+2. Run the admin panel (`npm run dev` in `admin`) and create a test user plus a sample map package.
+3. Launch the mobile app, sign in with the test user, and download the sample region while online.
+4. Switch the device to airplane mode, create a waypoint/track, and confirm it is stored locally.
+5. Restore connectivity and trigger a manual sync; verify the new waypoint appears in the admin panel and server logs.
 
 ## Contribution Guidelines
 - Use feature branches and open pull requests with clear descriptions.
