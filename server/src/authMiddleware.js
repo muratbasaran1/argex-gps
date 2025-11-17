@@ -5,7 +5,9 @@ const parsedAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((item) => item.trim())
   .filter(Boolean);
-const defaultAllowedOrigins = parsedAllowedOrigins.length ? parsedAllowedOrigins : developerFallbackOrigins;
+const isProduction = process.env.NODE_ENV === 'production';
+const defaultAllowedOrigins = parsedAllowedOrigins;
+const usingDeveloperFallback = !isProduction && parsedAllowedOrigins.length === 0;
 const adminRole = process.env.ADMIN_ROLE || 'admin';
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_AUDIENCE;
@@ -149,7 +151,22 @@ export async function requireAdmin(req, res, next) {
 export function corsMiddleware(req, res, next) {
   const origin = req.headers.origin;
   if (!origin) return next();
-  const allowedOrigins = new Set(defaultAllowedOrigins);
+
+  const allowedOrigins = defaultAllowedOrigins.length
+    ? new Set(defaultAllowedOrigins)
+    : usingDeveloperFallback
+      ? new Set(developerFallbackOrigins)
+      : null;
+
+  if (!allowedOrigins) {
+    const message = 'ALLOWED_ORIGINS must be configured in production to allow requests.';
+    res.header('Vary', 'Origin');
+    if (req.method === 'OPTIONS') {
+      return res.status(500).json({ message, action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.' });
+    }
+    return res.status(500).json({ message });
+  }
+
   if (allowedOrigins.has(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -159,7 +176,12 @@ export function corsMiddleware(req, res, next) {
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     return next();
   }
+
   res.header('Vary', 'Origin');
-  if (req.method === 'OPTIONS') return res.sendStatus(403);
-  return res.status(403).json({ message: 'origin not allowed' });
+  const responseBody = {
+    message: 'origin not allowed',
+    allowedOrigins: Array.from(allowedOrigins),
+  };
+  if (req.method === 'OPTIONS') return res.status(403).json(responseBody);
+  return res.status(403).json(responseBody);
 }
