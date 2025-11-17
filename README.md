@@ -21,31 +21,54 @@ Copy the example environment files to `.env` and update values for your local se
 - `cp server/.env.example server/.env`
 - `cp mobile/.env.example mobile/.env`
 
+Environment placeholders to update:
+- **API URLs**: `VITE_API_BASE_URL`, `API_BASE_URL`, and `TILE_CDN_URL` should reflect where your API is exposed (e.g., `http://localhost:4000`).
+- **Database/Cache**: `DATABASE_URL` and `REDIS_URL` default to the Compose service names (`db`, `redis`).
+- **Auth**: `JWT_SECRET`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, and `VITE_AUTH_*` should match your identity provider.
+- **Map storage**: `MAP_STORAGE_PATH`, `TILE_CACHE_PATH`, `MAP_PACKAGE_DIR`, and `MAP_PACKAGE_ARCHIVE` define where offline tile archives live on the server and mobile app.
+
 ## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
-2. Install dependencies per package:
+2. Copy environment templates as shown above and adjust secrets/URLs.
+3. (Optional) Install dependencies locally per package if you want to run outside Docker:
    - **Admin panel**: `cd admin && npm install`
-   - **Server/API**: `cd server && npm install` (or `docker compose build` if containerized)
-   - **Mobile app**: `cd mobile && npm install` (for React Native/Expo) or `flutter pub get` (for Flutter)
-3. Start backend services:
-   - With Docker: `cd server && docker compose up -d` (API, database, tile storage)
-   - Without Docker: `cd server && npm run dev` (ensure Postgres/Redis from `.env` are running)
-4. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
-5. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
+   - **Server/API**: `cd server && npm install`
+   - **Mobile app**: `cd mobile && npm install` (React Native/Expo) or `flutter pub get` (Flutter)
+4. Start backend stack with Docker Compose from the repo root:
+   - `docker compose up -d db redis` to boot dependencies.
+   - `docker compose up -d api` to run the API with mounted source and map volumes.
+   - Tail logs as needed: `docker compose logs -f api`
+5. Alternatively, run the server locally without Docker: `cd server && npm run dev` (ensure Postgres/Redis from `.env` are running).
+6. Run the admin panel: `cd admin && npm run dev` and visit the indicated localhost port.
+7. Launch the mobile/client app with your chosen toolchain (e.g., `cd mobile && expo start` or `flutter run`).
 
 These steps will evolve as the codebase grows; see upcoming documentation updates for precise commands.
 
 ## Map data packages
-- Admins can upload prepared map tile archives to the backend storage directory defined by `MAP_STORAGE_PATH` in `server/.env`.
-- Developers can download packaged regions from an internal bucket or CDN, place them under `server/data/map-packages`, and rebuild the tile index if needed.
-- For mobile testing, sideload a `.tgz`/`.zip` package into the path configured by `MAP_PACKAGE_DIR` in `mobile/.env` or trigger a download from the admin API endpoint (e.g., `/maps/:regionId/download`).
+- Admins can upload prepared map tile archives to the backend storage directory defined by `MAP_STORAGE_PATH` in `server/.env` (defaults to `/var/lib/argex-gps/map-packages`, mounted from the `map-packages` volume in Docker).
+- Developers can download packaged regions from an internal bucket or CDN, place them under `./map-packages` (repo root) so they sync into the server container, and rebuild the tile index if needed.
+- For mobile testing, sideload a `.tgz`/`.zip` package into the path configured by `MAP_PACKAGE_DIR` or `MAP_PACKAGE_ARCHIVE` in `mobile/.env`, or trigger a download from the admin API endpoint (e.g., `/maps/:regionId/download`).
+- Example layout for the server and mobile offline directories:
+  ```
+  map-packages/
+    regions/
+      west-coast-v1/
+        metadata.json
+        tiles/
+          12/
+            654/1584.pbf
+    archives/
+      west-coast-v1.tgz
+  ```
 
 ## Sync test flow (example)
-1. Start the backend services (`docker compose up` or `npm run dev` in `server`).
-2. Run the admin panel (`npm run dev` in `admin`) and create a test user plus a sample map package.
-3. Launch the mobile app, sign in with the test user, and download the sample region while online.
-4. Switch the device to airplane mode, create a waypoint/track, and confirm it is stored locally.
-5. Restore connectivity and trigger a manual sync; verify the new waypoint appears in the admin panel and server logs.
+1. Start dependencies: `docker compose up -d db redis`.
+2. Start the API: `docker compose up -d api` and wait for migrations/startup logs.
+3. Run the admin panel (`npm run dev` in `admin`) and create a test user plus a sample map package upload.
+4. Verify map packages are visible under `/var/lib/argex-gps/map-packages` inside the `api` container: `docker compose exec api ls /var/lib/argex-gps/map-packages`.
+5. Launch the mobile app, point `API_BASE_URL` to your machine IP, and download the sample region while online.
+6. Switch the device to airplane mode, create a waypoint/track, and confirm it is stored locally.
+7. Restore connectivity and trigger a manual sync; verify the new waypoint appears in the admin panel and server logs.
 
 ## Contribution Guidelines
 - Use feature branches and open pull requests with clear descriptions.
