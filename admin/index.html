@@ -16,6 +16,19 @@
   <body>
     <h1>Ayarlar</h1>
     <div class="status" id="status"></div>
+    <section class="auth">
+      <h2>Giriş</h2>
+      <form id="login-form">
+        <label>Token URL: <input name="tokenUrl" required /></label>
+        <label>İstemci ID: <input name="clientId" required /></label>
+        <label>Scope: <input name="scope" value="openid profile email offline_access" /></label>
+        <label>Audience: <input name="audience" placeholder="opsiyonel" /></label>
+        <label>Kullanıcı Adı: <input name="username" required /></label>
+        <label>Parola: <input name="password" type="password" required /></label>
+        <button type="submit">Giriş Yap</button>
+      </form>
+      <button id="logout-btn" type="button">Çıkış</button>
+    </section>
     <form id="settings-form">
       <label>Key: <input name="key" required /></label>
       <label>Value: <input name="value" required /></label>
@@ -32,22 +45,144 @@
 
     <script>
       const apiBase = (window.API_BASE_URL || '') + '/api/settings';
-
       const statusEl = document.getElementById('status');
       const form = document.getElementById('settings-form');
       const bodyEl = document.getElementById('settings-body');
+      const loginForm = document.getElementById('login-form');
+      const logoutBtn = document.getElementById('logout-btn');
+      const tokenStorageKey = 'settingsTokens';
+      const configStorageKey = 'settingsAuthConfig';
+      const defaultConfig = {
+        tokenUrl: window.OIDC_TOKEN_URL || '',
+        clientId: window.OIDC_CLIENT_ID || '',
+        scope: window.OIDC_SCOPE || 'openid profile email offline_access',
+        audience: window.OIDC_AUDIENCE || '',
+        username: '',
+        password: '',
+      };
+      let authConfig = loadConfig();
+      let tokens = loadTokens();
 
-      async function fetchSettings() {
-        status('Yükleniyor...');
-        const res = await fetch(apiBase);
-        const data = await res.json();
-        renderTable(data.settings || []);
-        status('Kaydedilmiş ayarlar yüklendi.');
+      function loadConfig() {
+        try {
+          return { ...defaultConfig, ...(JSON.parse(localStorage.getItem(configStorageKey)) || {}) };
+        } catch (error) {
+          console.error('config parse error', error);
+          return { ...defaultConfig };
+        }
+      }
+
+      function saveConfig(config) {
+        authConfig = { ...authConfig, ...config };
+        localStorage.setItem(configStorageKey, JSON.stringify(authConfig));
+      }
+
+      function loadTokens() {
+        try {
+          const stored = localStorage.getItem(tokenStorageKey);
+          return stored ? JSON.parse(stored) : null;
+        } catch (error) {
+          console.error('token parse error', error);
+          return null;
+        }
+      }
+
+      function persistTokens(newTokens) {
+        if (!newTokens) {
+          tokens = null;
+          localStorage.removeItem(tokenStorageKey);
+          return;
+        }
+        const expiresInMs = newTokens.expires_in ? newTokens.expires_in * 1000 : null;
+        const expiresAt = expiresInMs ? Date.now() + expiresInMs : null;
+        tokens = { ...newTokens, expiresAt };
+        localStorage.setItem(tokenStorageKey, JSON.stringify(tokens));
+      }
+
+      function isTokenExpired(currentTokens) {
+        if (!currentTokens || !currentTokens.expiresAt) return false;
+        return Date.now() >= currentTokens.expiresAt - 15_000;
       }
 
       function status(text, isError) {
         statusEl.textContent = text;
         statusEl.style.color = isError ? 'red' : 'inherit';
+      }
+
+      async function requestTokenFromPassword(config) {
+        const body = new URLSearchParams({
+          grant_type: 'password',
+          username: config.username,
+          password: config.password,
+          client_id: config.clientId,
+          scope: config.scope,
+        });
+        if (config.audience) body.append('audience', config.audience);
+        const res = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!res.ok) {
+          throw new Error('Giriş başarısız');
+        }
+        const data = await res.json();
+        persistTokens(data);
+        saveConfig(config);
+        status('Giriş başarılı, token saklandı.');
+      }
+
+      async function refreshAccessToken() {
+        if (!tokens?.refresh_token) throw new Error('Yenileme tokenı bulunamadı');
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+          client_id: authConfig.clientId,
+          scope: authConfig.scope,
+        });
+        if (authConfig.audience) body.append('audience', authConfig.audience);
+        const res = await fetch(authConfig.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!res.ok) throw new Error('Token yenileme başarısız');
+        const data = await res.json();
+        persistTokens({ ...tokens, ...data });
+        status('Access token yenilendi.');
+      }
+
+      async function ensureAccessToken() {
+        if (tokens && !isTokenExpired(tokens)) return tokens.access_token;
+        if (tokens?.refresh_token) {
+          await refreshAccessToken();
+          return tokens.access_token;
+        }
+        throw new Error('Giriş gerekli');
+      }
+
+      async function authorizedFetch(url, options = {}) {
+        const headers = new Headers(options.headers || {});
+        const token = await ensureAccessToken();
+        headers.set('Authorization', `Bearer ${token}`);
+        const requestOptions = { ...options, headers };
+
+        let response = await fetch(url, requestOptions);
+        if (response.status === 401 && tokens?.refresh_token) {
+          await refreshAccessToken();
+          headers.set('Authorization', `Bearer ${tokens.access_token}`);
+          response = await fetch(url, { ...options, headers });
+        }
+        if (response.status === 401) throw new Error('Kimlik doğrulama başarısız');
+        return response;
+      }
+
+      async function fetchSettings() {
+        status('Yükleniyor...');
+        const res = await authorizedFetch(apiBase);
+        const data = await res.json();
+        renderTable(data.settings || []);
+        status('Kaydedilmiş ayarlar yüklendi.');
       }
 
       function renderTable(settings) {
@@ -75,19 +210,23 @@
         const existingRow = bodyEl.querySelector('tr[data-editing="true"]');
         const method = existingRow ? 'PUT' : 'POST';
         const targetId = existingRow ? existingRow.dataset.id : '';
-        const res = await fetch(`${apiBase}/${targetId}`, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          status(err.message || 'Hata oluştu', true);
-          return;
+        try {
+          const res = await authorizedFetch(`${apiBase}/${targetId}`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            status(err.message || 'Hata oluştu', true);
+            return;
+          }
+          form.reset();
+          if (existingRow) existingRow.removeAttribute('data-editing');
+          await fetchSettings();
+        } catch (error) {
+          status(error.message || 'Hata oluştu', true);
         }
-        form.reset();
-        if (existingRow) existingRow.removeAttribute('data-editing');
-        await fetchSettings();
       });
 
       bodyEl.addEventListener('click', async (e) => {
@@ -97,13 +236,18 @@
         const id = row.dataset.id;
         if (action === 'delete') {
           if (!confirm('Ayarı sil ve türev artefaktları temizle?')) return;
-          const res = await fetch(`${apiBase}/${id}`, { method: 'DELETE' });
-          if (!res.ok) {
-            status('Silme başarısız', true);
+          try {
+            const res = await authorizedFetch(`${apiBase}/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+              status('Silme başarısız', true);
+              return;
+            }
+            await fetchSettings();
+            return;
+          } catch (error) {
+            status(error.message || 'Silme başarısız', true);
             return;
           }
-          await fetchSettings();
-          return;
         }
         if (action === 'edit') {
           row.dataset.editing = 'true';
@@ -114,7 +258,44 @@
         }
       });
 
-      fetchSettings().catch((err) => status(err.message, true));
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(loginForm).entries());
+        try {
+          await requestTokenFromPassword(payload);
+          await fetchSettings();
+        } catch (error) {
+          status(error.message || 'Giriş başarısız', true);
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        persistTokens(null);
+        status('Oturum kapatıldı.');
+      });
+
+      function prefillLoginForm() {
+        const config = loadConfig();
+        authConfig = config;
+        Object.entries(config).forEach(([key, value]) => {
+          if (loginForm[key]) loginForm[key].value = value || '';
+        });
+      }
+
+      async function boot() {
+        prefillLoginForm();
+        if (!tokens) {
+          status('Lütfen giriş yapın.');
+          return;
+        }
+        try {
+          await fetchSettings();
+        } catch (error) {
+          status(error.message || 'Yüklenemedi', true);
+        }
+      }
+
+      boot();
     </script>
   </body>
 </html>
