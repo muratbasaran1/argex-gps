@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const rootDir = path.resolve(__dirname, '..');
 const adminDir = __dirname;
 const distDir = path.join(adminDir, 'dist');
 const sourceHtml = path.join(adminDir, 'index.html');
@@ -17,6 +16,8 @@ const passthroughKeys = new Set([
   'OIDC_AUDIENCE',
   'OIDC_REDIRECT_URI',
 ]);
+
+const allowedViteKeys = new Set(['VITE_UI_BRAND']);
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -40,11 +41,7 @@ function parseEnvFile(filePath) {
 }
 
 function loadEnvValues() {
-  const envFromFiles = [
-    path.join(rootDir, '.env'), // optional fallback
-    path.join(adminDir, '.env'),
-    path.join(adminDir, '.env.local'),
-  ]
+  const envFromFiles = [path.join(adminDir, '.env'), path.join(adminDir, '.env.local')]
     .filter((filePath) => fs.existsSync(filePath))
     .reduce((acc, filePath) => ({ ...acc, ...parseEnvFile(filePath) }), {});
 
@@ -54,7 +51,7 @@ function loadEnvValues() {
 function collectWindowConfig(allEnv) {
   return Object.entries(allEnv).reduce((acc, [key, value]) => {
     if (value === undefined) return acc;
-    if (key.startsWith('VITE_')) {
+    if (allowedViteKeys.has(key)) {
       acc[key.replace(/^VITE_/, '')] = value;
       return acc;
     }
