@@ -1,9 +1,11 @@
 import crypto from 'crypto';
 
-const defaultAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+const developerFallbackOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const parsedAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((item) => item.trim())
   .filter(Boolean);
+const defaultAllowedOrigins = parsedAllowedOrigins.length ? parsedAllowedOrigins : developerFallbackOrigins;
 const adminRole = process.env.ADMIN_ROLE || 'admin';
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_AUDIENCE;

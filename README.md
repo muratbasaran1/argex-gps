@@ -33,6 +33,7 @@ Each template now ships with placeholder values for API URLs, database connectio
   - **API publicity**: `PUBLIC_API_URL`, `API_BASE_URL`, `API_WEBSOCKET_URL`, and `TILE_CDN_URL` define the URLs returned to clients and echoed back in the settings UI.
   - **Database**: `DATABASE_URL` and `DATABASE_SCHEMA` document how the API reaches MySQL. These values appear in the admin settings page so operators can verify connectivity quickly.
   - **Auth/JWT**: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `OIDC_DISCOVERY_URL`, `AUTH_DOMAIN`, `AUTH_CLIENT_ID`, and `AUTH_CLIENT_SECRET` bind the API to your IdP and govern token validation shown on the settings page.
+  - **CORS**: `ALLOWED_ORIGINS` lists comma-separated client origins permitted to call the API. For local admin/mobile testing, set `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000` so both dev servers can reach the backend without extra configuration.
   - **Map packages**: `MAP_STORAGE_PATH`, `MAP_ARCHIVE_PATH`, `MAP_ARCHIVE_MOUNT`, `MAP_PROVIDER_TOKEN`, `MAP_PACKAGE_INDEX_PATH`, and `MAP_PACKAGE_DOWNLOAD_URL` tell the API where to read/write archives; the settings view references these to explain where uploads land.
   - **Settings defaults**: `SETTINGS_DEFAULT_REGION`, `SETTINGS_DEFAULT_MAP_STYLE`, and `SETTINGS_FEATURE_FLAGS` feed the single-page settings UI with initial values shared between admin and mobile clients.
 - **mobile/.env**
