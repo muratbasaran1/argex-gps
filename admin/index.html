@@ -27,13 +27,13 @@
     <section class="auth">
       <h2>Giriş</h2>
       <form id="login-form">
+        <label>Authorization URL: <input name="authorizeUrl" required /></label>
         <label>Token URL: <input name="tokenUrl" required /></label>
+        <label>Redirect URI: <input name="redirectUri" required /></label>
         <label>İstemci ID: <input name="clientId" required /></label>
         <label>Scope: <input name="scope" value="openid profile email offline_access" /></label>
         <label>Audience: <input name="audience" placeholder="opsiyonel" /></label>
-        <label>Kullanıcı Adı: <input name="username" required /></label>
-        <label>Parola: <input name="password" type="password" required /></label>
-        <button type="submit">Giriş Yap</button>
+        <button type="submit">Hosted girişe git</button>
       </form>
       <button id="logout-btn" type="button">Çıkış</button>
     </section>
@@ -59,22 +59,27 @@
       const bodyEl = document.getElementById('settings-body');
       const loginForm = document.getElementById('login-form');
       const logoutBtn = document.getElementById('logout-btn');
-      const tokenStorageKey = 'settingsTokens';
       const configStorageKey = 'settingsAuthConfig';
+      const pkceStorageKey = 'settingsPkceState';
+      const legacyTokenStorageKey = 'settingsTokens';
       const defaultConfig = {
+        authorizeUrl: window.OIDC_AUTHORIZE_URL || '',
         tokenUrl: window.OIDC_TOKEN_URL || '',
         clientId: window.OIDC_CLIENT_ID || '',
         scope: window.OIDC_SCOPE || 'openid profile email offline_access',
         audience: window.OIDC_AUDIENCE || '',
-        username: '',
-        password: '',
+        redirectUri: window.OIDC_REDIRECT_URI || `${window.location.origin}${window.location.pathname}`,
       };
       let authConfig = loadConfig();
-      let tokens = loadTokens();
+      let tokens = null;
 
       function loadConfig() {
         try {
-          return { ...defaultConfig, ...(JSON.parse(localStorage.getItem(configStorageKey)) || {}) };
+          const stored = JSON.parse(localStorage.getItem(configStorageKey)) || {};
+          const { username: _legacyUsername, password: _legacyPassword, ...rest } = stored;
+          const merged = { ...defaultConfig, ...rest };
+          localStorage.setItem(configStorageKey, JSON.stringify(merged));
+          return merged;
         } catch (error) {
           console.error('config parse error', error);
           return { ...defaultConfig };
@@ -86,26 +91,23 @@
         localStorage.setItem(configStorageKey, JSON.stringify(authConfig));
       }
 
-      function loadTokens() {
-        try {
-          const stored = localStorage.getItem(tokenStorageKey);
-          return stored ? JSON.parse(stored) : null;
-        } catch (error) {
-          console.error('token parse error', error);
-          return null;
+      function clearLegacyStorage() {
+        localStorage.removeItem(legacyTokenStorageKey);
+        const stored = JSON.parse(localStorage.getItem(configStorageKey) || '{}');
+        if (stored.username || stored.password) {
+          const { username: _legacyUsername, password: _legacyPassword, ...rest } = stored;
+          localStorage.setItem(configStorageKey, JSON.stringify(rest));
         }
       }
 
       function persistTokens(newTokens) {
         if (!newTokens) {
           tokens = null;
-          localStorage.removeItem(tokenStorageKey);
           return;
         }
         const expiresInMs = newTokens.expires_in ? newTokens.expires_in * 1000 : null;
         const expiresAt = expiresInMs ? Date.now() + expiresInMs : null;
         tokens = { ...newTokens, expiresAt };
-        localStorage.setItem(tokenStorageKey, JSON.stringify(tokens));
       }
 
       function isTokenExpired(currentTokens) {
@@ -118,27 +120,83 @@
         statusEl.style.color = isError ? 'red' : 'inherit';
       }
 
-      async function requestTokenFromPassword(config) {
+      function base64UrlEncode(buffer) {
+        const binary = String.fromCharCode(...new Uint8Array(buffer));
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      }
+
+      function randomString(length = 64) {
+        const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+        const array = new Uint8Array(length);
+        crypto.getRandomValues(array);
+        return Array.from(array, (byte) => charset[byte % charset.length]).join('');
+      }
+
+      async function generateCodeChallenge(verifier) {
+        const data = new TextEncoder().encode(verifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return base64UrlEncode(digest);
+      }
+
+      function storePkceState(value) {
+        sessionStorage.setItem(pkceStorageKey, JSON.stringify(value));
+      }
+
+      function loadPkceState() {
+        try {
+          return JSON.parse(sessionStorage.getItem(pkceStorageKey) || 'null');
+        } catch (error) {
+          console.error('pkce parse error', error);
+          return null;
+        }
+      }
+
+      function clearPkceState() {
+        sessionStorage.removeItem(pkceStorageKey);
+      }
+
+      async function startAuthorization(config) {
+        if (!config.authorizeUrl || !config.tokenUrl) {
+          throw new Error('Authorization veya token endpoint ayarlarını doldurun.');
+        }
+        const codeVerifier = randomString(64);
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        const state = randomString(32);
+        storePkceState({ codeVerifier, state });
+        saveConfig(config);
+
+        const authorizeUrl = new URL(config.authorizeUrl);
+        authorizeUrl.searchParams.set('response_type', 'code');
+        authorizeUrl.searchParams.set('client_id', config.clientId);
+        authorizeUrl.searchParams.set('redirect_uri', config.redirectUri);
+        authorizeUrl.searchParams.set('scope', config.scope);
+        authorizeUrl.searchParams.set('code_challenge', codeChallenge);
+        authorizeUrl.searchParams.set('code_challenge_method', 'S256');
+        authorizeUrl.searchParams.set('state', state);
+        if (config.audience) authorizeUrl.searchParams.set('audience', config.audience);
+        status('Kimlik doğrulama için yönlendiriliyorsunuz...');
+        window.location.assign(authorizeUrl.toString());
+      }
+
+      async function exchangeAuthCode(code, codeVerifier) {
+        if (!codeVerifier) throw new Error('PKCE doğrulama verisi bulunamadı.');
         const body = new URLSearchParams({
-          grant_type: 'password',
-          username: config.username,
-          password: config.password,
-          client_id: config.clientId,
-          scope: config.scope,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: authConfig.redirectUri,
+          client_id: authConfig.clientId,
+          code_verifier: codeVerifier,
         });
-        if (config.audience) body.append('audience', config.audience);
-        const res = await fetch(config.tokenUrl, {
+        if (authConfig.audience) body.append('audience', authConfig.audience);
+        const res = await fetch(authConfig.tokenUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body,
         });
-        if (!res.ok) {
-          throw new Error('Giriş başarısız');
-        }
+        if (!res.ok) throw new Error('Giriş başarısız');
         const data = await res.json();
         persistTokens(data);
-        saveConfig(config);
-        status('Giriş başarılı, token saklandı.');
+        status('Giriş tamamlandı.');
       }
 
       async function refreshAccessToken() {
@@ -276,16 +334,13 @@
             return;
           }
           form.reset();
+          form.value.placeholder = '';
+          form.secret.checked = false;
           if (existingRow) existingRow.removeAttribute('data-editing');
           await fetchSettings();
         } catch (error) {
           status(error.message || 'Hata oluştu', true);
         }
-        form.reset();
-        form.value.placeholder = '';
-        form.secret.checked = false;
-        if (existingRow) existingRow.removeAttribute('data-editing');
-        await fetchSettings();
       });
 
       bodyEl.addEventListener('click', async (e) => {
@@ -328,15 +383,15 @@
         e.preventDefault();
         const payload = Object.fromEntries(new FormData(loginForm).entries());
         try {
-          await requestTokenFromPassword(payload);
-          await fetchSettings();
+          await startAuthorization(payload);
         } catch (error) {
-          status(error.message || 'Giriş başarısız', true);
+          status(error.message || 'Giriş başlatılamadı', true);
         }
       });
 
       logoutBtn.addEventListener('click', () => {
         persistTokens(null);
+        clearPkceState();
         status('Oturum kapatıldı.');
       });
 
@@ -348,14 +403,42 @@
         });
       }
 
-      async function boot() {
-        prefillLoginForm();
-        if (!tokens) {
-          status('Lütfen giriş yapın.');
-          return;
+      async function handleRedirectCallback() {
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get('error');
+        if (error) {
+          status(params.get('error_description') || error, true);
+          clearPkceState();
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return true;
+        }
+        const code = params.get('code');
+        const state = params.get('state');
+        if (!code) return false;
+        const pkceState = loadPkceState();
+        if (!pkceState || pkceState.state !== state) {
+          status('PKCE state doğrulanamadı.', true);
+          clearPkceState();
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return true;
         }
         try {
+          await exchangeAuthCode(code, pkceState.codeVerifier);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          clearPkceState();
           await fetchSettings();
+        } catch (err) {
+          status(err.message || 'Giriş başarısız', true);
+        }
+        return true;
+      }
+
+      async function boot() {
+        clearLegacyStorage();
+        prefillLoginForm();
+        try {
+          const handled = await handleRedirectCallback();
+          if (!handled) status('Lütfen giriş yapın.');
         } catch (error) {
           status(error.message || 'Yüklenemedi', true);
         }
