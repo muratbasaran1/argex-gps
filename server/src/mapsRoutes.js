@@ -1,9 +1,37 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 import { getDbPool } from './db.js';
 
 const router = Router();
 const publicMapsRouter = Router();
+
+const ROUTE_STATUSES = ['draft', 'active', 'archived'];
+
+const routeCreateSchema = z.object({
+  name: z.string().min(1),
+  region: z.string().min(1),
+  status: z.enum(ROUTE_STATUSES).default('draft'),
+  description: z.string().optional().nullable(),
+});
+
+const routeUpdateSchema = routeCreateSchema.partial();
+
+const waypointCreateSchema = z.object({
+  name: z.string().min(1),
+  latitude: z
+    .coerce.number()
+    .refine((value) => Number.isFinite(value), 'latitude sayısal olmalı')
+    .refine((value) => value >= -90 && value <= 90, 'latitude -90 ile 90 arasında olmalı'),
+  longitude: z
+    .coerce.number()
+    .refine((value) => Number.isFinite(value), 'longitude sayısal olmalı')
+    .refine((value) => value >= -180 && value <= 180, 'longitude -180 ile 180 arasında olmalı'),
+  orderIndex: z.coerce.number().int().default(0),
+  etaSeconds: z.union([z.coerce.number().int().nonnegative(), z.null()]).optional(),
+});
+
+const waypointUpdateSchema = waypointCreateSchema.partial();
 
 function mapRouteRow(row) {
   return {
@@ -35,6 +63,10 @@ function now() {
   return new Date();
 }
 
+function sendValidationError(res, error) {
+  return res.status(400).json({ message: 'geçersiz istek verisi', issues: error.flatten() });
+}
+
 async function getRouteById(pool, routeId) {
   const [rows] = await pool.query('SELECT * FROM map_routes WHERE id = ?', [routeId]);
   return rows[0] || null;
@@ -53,16 +85,16 @@ router.get('/routes', async (_req, res) => {
 
 router.post('/routes', async (req, res) => {
   try {
-    const { name, region, status = 'draft', description = '' } = req.body || {};
-    if (!name || !region) {
-      return res.status(400).json({ message: 'name ve region zorunlu' });
-    }
+    const parsed = routeCreateSchema.safeParse(req.body || {});
+    if (!parsed.success) return sendValidationError(res, parsed.error);
+
+    const { name, region, status, description } = parsed.data;
     const id = uuid();
     const timestamp = now();
     const pool = await getDbPool();
     await pool.execute(
       'INSERT INTO map_routes (id, name, region, status, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, name, region, status, description, timestamp, timestamp],
+      [id, name, region, status, description ?? '', timestamp, timestamp],
     );
     res.status(201).json({ route: { id, name, region, status, description, createdAt: timestamp, updatedAt: timestamp } });
   } catch (error) {
@@ -92,16 +124,17 @@ router.get('/routes/:routeId', async (req, res) => {
 router.put('/routes/:routeId', async (req, res) => {
   try {
     const { routeId } = req.params;
-    const { name, region, status, description } = req.body || {};
+    const parsed = routeUpdateSchema.safeParse(req.body || {});
+    if (!parsed.success) return sendValidationError(res, parsed.error);
     const pool = await getDbPool();
     const existing = await getRouteById(pool, routeId);
     if (!existing) return res.status(404).json({ message: 'rota bulunamadı' });
 
     const patch = {
-      name: name || existing.name,
-      region: region || existing.region,
-      status: status || existing.status,
-      description: description ?? existing.description,
+      name: parsed.data.name || existing.name,
+      region: parsed.data.region || existing.region,
+      status: parsed.data.status || existing.status,
+      description: parsed.data.description ?? existing.description,
     };
     const timestamp = now();
     await pool.execute(
@@ -131,15 +164,14 @@ router.delete('/routes/:routeId', async (req, res) => {
 router.post('/routes/:routeId/waypoints', async (req, res) => {
   try {
     const { routeId } = req.params;
-    const { name, latitude, longitude, orderIndex = 0, etaSeconds = null } = req.body || {};
-    if (!name || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ message: 'name, latitude ve longitude zorunlu' });
-    }
+    const parsed = waypointCreateSchema.safeParse(req.body || {});
+    if (!parsed.success) return sendValidationError(res, parsed.error);
 
     const pool = await getDbPool();
     const route = await getRouteById(pool, routeId);
     if (!route) return res.status(404).json({ message: 'rota bulunamadı' });
 
+    const { name, latitude, longitude, orderIndex, etaSeconds = null } = parsed.data;
     const id = uuid();
     const timestamp = now();
     await pool.execute(
@@ -156,7 +188,8 @@ router.post('/routes/:routeId/waypoints', async (req, res) => {
 router.put('/routes/:routeId/waypoints/:waypointId', async (req, res) => {
   try {
     const { routeId, waypointId } = req.params;
-    const { name, latitude, longitude, orderIndex, etaSeconds } = req.body || {};
+    const parsed = waypointUpdateSchema.safeParse(req.body || {});
+    if (!parsed.success) return sendValidationError(res, parsed.error);
     const pool = await getDbPool();
     const route = await getRouteById(pool, routeId);
     if (!route) return res.status(404).json({ message: 'rota bulunamadı' });
@@ -169,11 +202,11 @@ router.put('/routes/:routeId/waypoints/:waypointId', async (req, res) => {
     if (!existing) return res.status(404).json({ message: 'waypoint bulunamadı' });
 
     const nextValues = {
-      name: name || existing.name,
-      latitude: latitude ?? existing.latitude,
-      longitude: longitude ?? existing.longitude,
-      orderIndex: orderIndex ?? existing.orderIndex,
-      etaSeconds: etaSeconds ?? existing.etaSeconds,
+      name: parsed.data.name || existing.name,
+      latitude: parsed.data.latitude ?? existing.latitude,
+      longitude: parsed.data.longitude ?? existing.longitude,
+      orderIndex: parsed.data.orderIndex ?? existing.orderIndex,
+      etaSeconds: parsed.data.etaSeconds ?? existing.etaSeconds,
     };
     const timestamp = now();
     await pool.execute(
