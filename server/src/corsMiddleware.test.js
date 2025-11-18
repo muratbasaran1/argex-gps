@@ -67,6 +67,24 @@ test('cors middleware enforces allowed origins', async (t) => {
     assert.strictEqual(res.headers.Vary, 'Origin');
   });
 
+  await t.test('blocks disallowed origins', async () => {
+    const corsMiddleware = createCorsMiddleware(buildConfig({ ALLOWED_ORIGINS: 'https://admin.example.com' }));
+    const req = { headers: { origin: 'https://app.example.com' }, method: 'GET', path: '/api' };
+    const res = createMockResponse();
+    let nextCalled = false;
+
+    await corsMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.strictEqual(nextCalled, false);
+    assert.strictEqual(res.statusCode, 403);
+    assert.deepStrictEqual(res.body, {
+      message: 'origin not allowed',
+      allowedOrigins: ['https://admin.example.com'],
+    });
+  });
+
   await t.test('responds to preflight using development fallback origins', async () => {
     const corsMiddleware = createCorsMiddleware(
       buildConfig({ NODE_ENV: 'development', ENABLE_DEV_CORS_FALLBACK: 'true' })
@@ -84,5 +102,19 @@ test('cors middleware enforces allowed origins', async (t) => {
     assert.strictEqual(res.headers['Access-Control-Allow-Origin'], 'http://localhost:5173');
     assert.strictEqual(res.headers['Access-Control-Allow-Methods'], 'GET,POST,PUT,DELETE,OPTIONS');
     assert.strictEqual(res.headers['Access-Control-Allow-Headers'], 'Content-Type, Authorization');
+  });
+
+  await t.test('passes through when origin header is absent', async () => {
+    const corsMiddleware = createCorsMiddleware(buildConfig({ ALLOWED_ORIGINS: 'https://admin.example.com' }));
+    const req = { headers: {}, method: 'GET', path: '/api' };
+    const res = createMockResponse();
+    let nextCalled = false;
+
+    await corsMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.strictEqual(nextCalled, true);
+    assert.strictEqual(res.statusCode, null);
   });
 });
