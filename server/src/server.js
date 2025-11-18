@@ -13,8 +13,9 @@ const app = express();
 app.use(helmet());
 app.use(express.json());
 app.use(morgan('dev'));
-if (!allowedOriginsConfig.set) {
-  console.error(corsMessages.missingEnv);
+
+if (allowedOriginsConfig.enforceStartupFailure && !allowedOriginsConfig.set) {
+  console.error(`[cors] ${allowedOriginsConfig.error || corsMessages.missingEnv}`);
   process.exit(1);
 }
 

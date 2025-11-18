@@ -165,17 +165,15 @@ export function corsMiddleware(req, res, next) {
   const allowedOrigins = allowedOriginsConfig.set;
 
   if (!allowedOrigins) {
-    const message = corsMessages.missingEnv;
+    const message = allowedOriginsConfig.error || corsMessages.missingEnv;
     const responseBody = {
       message,
-      action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.',
+      action:
+        'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins or enable ENABLE_DEV_CORS_FALLBACK=true for local development defaults.',
     };
     res.header('Vary', 'Origin');
-    console.error('[cors]', message);
-    const status = 503;
-    if (req.method === 'OPTIONS') {
-      return res.status(status).json(responseBody);
-    }
+    console.warn('[cors]', message);
+    const status = 403;
     return res.status(status).json(responseBody);
   }
 
