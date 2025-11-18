@@ -117,4 +117,38 @@ test('cors middleware enforces allowed origins', async (t) => {
     assert.strictEqual(nextCalled, true);
     assert.strictEqual(res.statusCode, null);
   });
+
+  await t.test('skips CORS checks for health endpoint even when origin is present', async () => {
+    const corsMiddleware = createCorsMiddleware(buildConfig({ NODE_ENV: 'development' }));
+    const req = { headers: { origin: 'http://localhost:3000' }, method: 'GET', path: '/health' };
+    const res = createMockResponse();
+    let nextCalled = false;
+
+    await corsMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.strictEqual(nextCalled, true);
+    assert.strictEqual(res.statusCode, null);
+    assert.deepStrictEqual(res.headers, {});
+  });
+
+  await t.test('returns 403 for disallowed preflight requests', async () => {
+    const corsMiddleware = createCorsMiddleware(buildConfig({ ALLOWED_ORIGINS: 'https://admin.example.com' }));
+    const req = { headers: { origin: 'https://blocked.example.com' }, method: 'OPTIONS', path: '/api' };
+    const res = createMockResponse();
+    let nextCalled = false;
+
+    await corsMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.strictEqual(nextCalled, false);
+    assert.strictEqual(res.statusCode, 403);
+    assert.strictEqual(res.headers.Vary, 'Origin');
+    assert.deepStrictEqual(res.body, {
+      message: 'origin not allowed',
+      allowedOrigins: ['https://admin.example.com'],
+    });
+  });
 });
