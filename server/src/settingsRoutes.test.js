@@ -94,6 +94,28 @@ test('GET /api/settings/public exposes allowlisted defaults with normalized keys
   ]);
 });
 
+test('GET /api/settings/public exposes map package URLs with normalized keys', async () => {
+  const store = {
+    listSettings: async () => [
+      { key: 'MAP_PACKAGE_DOWNLOAD_URL', value: 'https://downloads/maps', secret: false, updatedAt: 'yesterday' },
+      { key: 'MAP_PACKAGE_INDEX_URL', value: 'https://downloads/index.json', secret: false, updatedAt: 'yesterday' },
+      { key: 'MAP_PACKAGE_BASE_URL', value: 'https://downloads', secret: false, updatedAt: 'yesterday' },
+      { key: 'MAP_PACKAGE_MANIFEST_URL', value: 'https://downloads/manifest.json', secret: false, updatedAt: 'yesterday' },
+    ],
+  };
+
+  const app = buildTestApp(store);
+  const res = await makeRequest(app, 'GET', '/api/settings/public');
+
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(res.body.settings, [
+    { key: 'public.maps.downloadUrl', value: 'https://downloads/maps', updatedAt: 'yesterday' },
+    { key: 'public.maps.indexUrl', value: 'https://downloads/index.json', updatedAt: 'yesterday' },
+    { key: 'public.maps.baseUrl', value: 'https://downloads', updatedAt: 'yesterday' },
+    { key: 'public.maps.manifestUrl', value: 'https://downloads/manifest.json', updatedAt: 'yesterday' },
+  ]);
+});
+
 test('POST /api/settings validates payload and forwards to store', async () => {
   const calls = [];
   const store = {
