@@ -45,6 +45,11 @@ Each template now ships with placeholder values for API URLs, database connectio
   - **Settings defaults**: `SETTINGS_DEFAULT_REGION` and `SETTINGS_DEFAULT_MAP_STYLE` control the initial selections shown to end users.
   - **Dotenv wiring**: The mobile client uses `react-native-dotenv` to inject values from `mobile/.env` at Metro build time. Ensure you have `mobile/.env` in place before running `npm start`/`expo start`; the `API_BASE_URL` value is surfaced on the app screen so you can confirm the compiled bundle picked it up.
 
+### Live telemetry websocket channel
+- The server now boots a websocket listener on the path declared by `API_WEBSOCKET_URL` (default `/socket`), sharing the same port as the HTTP API.
+- Upgrade requests enforce `ALLOWED_ORIGINS` and require the same Bearer token/`ADMIN_ROLE` combination as protected REST endpoints, so browsers and devices must pass an `Authorization: Bearer <jwt>` header during connection.
+- JSON messages with `type: "location:update"` or `type: "telemetry:update"` are fanned out to all connected peers after being tagged with the authenticated actor and a `receivedAt` timestamp; unsupported message types return an error envelope.
+
 ## Installation & Running
 1. Clone the repository: `git clone https://github.com/your-org/argex-gps.git && cd argex-gps`.
 2. Copy environment templates as shown above and adjust secrets/URLs.

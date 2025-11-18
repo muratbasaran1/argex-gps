@@ -76,7 +76,7 @@ async function verifyHsToken({ rawHeader, rawPayload, signature }) {
   }
 }
 
-async function verifyJwt(token) {
+export async function verifyJwt(token) {
   const { header, payload, rawHeader, rawPayload, signature } = parseJwtParts(token);
   if (header.alg !== 'RS256' && header.alg !== 'HS256') {
     throw new Error(`unsupported jwt algorithm: ${header.alg}`);
@@ -136,19 +136,31 @@ function collectRoles(payload) {
   return roles;
 }
 
+export async function validateAdminToken(authHeader) {
+  const auth = authHeader || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) {
+    const error = new Error('missing bearer token');
+    error.status = 401;
+    throw error;
+  }
+
+  const token = auth.slice('bearer '.length).trim();
+  const payload = await verifyJwt(token);
+  const roles = collectRoles(payload);
+
+  if (!roles.has(adminRole)) {
+    const error = new Error('insufficient role');
+    error.status = 403;
+    throw error;
+  }
+
+  return { ...payload, roles: Array.from(roles) };
+}
+
 export async function requireAdmin(req, res, next) {
   try {
-    const auth = req.headers.authorization || '';
-    if (!auth.toLowerCase().startsWith('bearer ')) {
-      return res.status(401).json({ message: 'missing bearer token' });
-    }
-    const token = auth.slice('bearer '.length).trim();
-    const payload = await verifyJwt(token);
-    const roles = collectRoles(payload);
-    if (!roles.has(adminRole)) {
-      return res.status(403).json({ message: 'forbidden', error: 'insufficient role' });
-    }
-    req.user = { ...payload, roles: Array.from(roles) };
+    const user = await validateAdminToken(req.headers.authorization);
+    req.user = user;
     return next();
   } catch (error) {
     console.error('auth failed', error);
