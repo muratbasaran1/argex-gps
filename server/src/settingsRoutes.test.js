@@ -116,6 +116,26 @@ test('GET /api/settings/public exposes map package URLs with normalized keys', a
   ]);
 });
 
+test('GET /api/settings/public exposes API and CDN endpoints with normalized keys', async () => {
+  const store = {
+    listSettings: async () => [
+      { key: 'API_BASE_URL', value: 'https://api.example.com', secret: false, updatedAt: 'today' },
+      { key: 'API_WEBSOCKET_URL', value: 'wss://api.example.com/ws', secret: false, updatedAt: 'today' },
+      { key: 'TILE_CDN_URL', value: 'https://cdn.example.com/tiles', secret: false, updatedAt: 'today' },
+    ],
+  };
+
+  const app = buildTestApp(store);
+  const res = await makeRequest(app, 'GET', '/api/settings/public');
+
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(res.body.settings, [
+    { key: 'public.api.baseUrl', value: 'https://api.example.com', updatedAt: 'today' },
+    { key: 'public.api.websocketUrl', value: 'wss://api.example.com/ws', updatedAt: 'today' },
+    { key: 'public.cdn.tileUrl', value: 'https://cdn.example.com/tiles', updatedAt: 'today' },
+  ]);
+});
+
 test('POST /api/settings validates payload and forwards to store', async () => {
   const calls = [];
   const store = {
