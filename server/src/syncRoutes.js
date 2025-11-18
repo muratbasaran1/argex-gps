@@ -1,8 +1,82 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { getDbPool } from './db.js';
+import { z } from 'zod';
 
 const router = Router();
+
+const packageStatusSchema = z.enum(['ready', 'pending', 'processing', 'failed']);
+const queueDirectionSchema = z.enum(['upload', 'download']);
+const queueStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed']);
+
+const packageCreateSchema = z
+  .object({
+    region: z.string().trim().min(1),
+    version: z.string().trim().min(1),
+    manifestUrl: z.string().trim().url().optional(),
+    sizeBytes: z.coerce.number().int().nonnegative().optional(),
+    checksum: z.string().trim().optional(),
+    status: packageStatusSchema.default('ready'),
+  })
+  .strict();
+
+const packageUpdateSchema = z
+  .object({
+    region: z.string().trim().min(1).optional(),
+    version: z.string().trim().min(1).optional(),
+    manifestUrl: z.string().trim().url().optional(),
+    sizeBytes: z.coerce.number().int().nonnegative().optional(),
+    checksum: z.string().trim().optional(),
+    status: packageStatusSchema.optional(),
+  })
+  .strict();
+
+const queueCreateSchema = z
+  .object({
+    direction: queueDirectionSchema.default('download'),
+    status: queueStatusSchema.default('pending'),
+  })
+  .strict();
+
+const queueUpdateSchema = z
+  .object({
+    status: queueStatusSchema.optional(),
+    retryCount: z.coerce.number().int().nonnegative().optional(),
+    lastError: z.string().optional(),
+  })
+  .strict();
+
+const zoomSchema = z.coerce.number().int().min(0).max(24);
+const tileIndexSchema = z.coerce.number().int().min(0).max(16_777_215);
+
+const tileCreateSchema = z
+  .object({
+    region: z.string().trim().min(1),
+    zoom: zoomSchema,
+    tileX: tileIndexSchema,
+    tileY: tileIndexSchema,
+    packageId: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
+const tileUpdateSchema = z
+  .object({
+    region: z.string().trim().min(1).optional(),
+    zoom: zoomSchema.optional(),
+    tileX: tileIndexSchema.optional(),
+    tileY: tileIndexSchema.optional(),
+    packageId: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
+function parseBody(schema, body, res) {
+  const parsed = schema.safeParse(body || {});
+  if (!parsed.success) {
+    res.status(400).json({ message: 'geçersiz istek gövdesi', errors: parsed.error.issues });
+    return null;
+  }
+  return parsed.data;
+}
 
 function now() {
   return new Date();
@@ -47,18 +121,38 @@ router.get('/packages', async (_req, res) => {
 
 router.post('/packages', async (req, res) => {
   try {
-    const { region, version, manifestUrl = '', sizeBytes = null, checksum = '', status = 'ready' } = req.body || {};
-    if (!region || !version) {
-      return res.status(400).json({ message: 'region ve version zorunludur' });
-    }
+    const parsed = parseBody(packageCreateSchema, req.body, res);
+    if (!parsed) return;
     const timestamp = now();
     const id = uuid();
     const pool = await getDbPool();
     await pool.execute(
       'INSERT INTO map_packages (id, region, version, manifestUrl, sizeBytes, checksum, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, region, version, manifestUrl, sizeBytes, checksum, status, timestamp, timestamp],
+      [
+        id,
+        parsed.region,
+        parsed.version,
+        parsed.manifestUrl ?? null,
+        parsed.sizeBytes ?? null,
+        parsed.checksum ?? '',
+        parsed.status,
+        timestamp,
+        timestamp,
+      ],
     );
-    res.status(201).json({ package: { id, region, version, manifestUrl, sizeBytes, checksum, status, createdAt: timestamp, updatedAt: timestamp } });
+    res.status(201).json({
+      package: {
+        id,
+        region: parsed.region,
+        version: parsed.version,
+        manifestUrl: parsed.manifestUrl ?? null,
+        sizeBytes: parsed.sizeBytes ?? null,
+        checksum: parsed.checksum ?? '',
+        status: parsed.status,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    });
   } catch (error) {
     console.error('create package failed', error);
     res.status(500).json({ message: 'paket kaydedilemedi' });
@@ -81,19 +175,20 @@ router.get('/packages/:packageId', async (req, res) => {
 router.put('/packages/:packageId', async (req, res) => {
   try {
     const { packageId } = req.params;
-    const { region, version, manifestUrl, sizeBytes, checksum, status } = req.body || {};
+    const parsed = parseBody(packageUpdateSchema, req.body, res);
+    if (!parsed) return;
     const pool = await getDbPool();
     const [existingRows] = await pool.query('SELECT * FROM map_packages WHERE id = ?', [packageId]);
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ message: 'paket bulunamadı' });
 
     const nextValues = {
-      region: region || existing.region,
-      version: version || existing.version,
-      manifestUrl: manifestUrl ?? existing.manifestUrl,
-      sizeBytes: sizeBytes ?? existing.sizeBytes,
-      checksum: checksum ?? existing.checksum,
-      status: status || existing.status,
+      region: parsed.region || existing.region,
+      version: parsed.version || existing.version,
+      manifestUrl: parsed.manifestUrl ?? existing.manifestUrl,
+      sizeBytes: parsed.sizeBytes ?? existing.sizeBytes,
+      checksum: parsed.checksum ?? existing.checksum,
+      status: parsed.status || existing.status,
     };
     const timestamp = now();
     await pool.execute(
@@ -110,7 +205,8 @@ router.put('/packages/:packageId', async (req, res) => {
 router.post('/packages/:packageId/queue', async (req, res) => {
   try {
     const { packageId } = req.params;
-    const { direction = 'download', status = 'pending' } = req.body || {};
+    const parsed = parseBody(queueCreateSchema, req.body, res);
+    if (!parsed) return;
     const pool = await getDbPool();
     const [existingRows] = await pool.query('SELECT id FROM map_packages WHERE id = ?', [packageId]);
     if (!existingRows[0]) return res.status(404).json({ message: 'paket bulunamadı' });
@@ -119,9 +215,19 @@ router.post('/packages/:packageId/queue', async (req, res) => {
     const timestamp = now();
     await pool.execute(
       'INSERT INTO sync_queue (id, packageId, direction, status, retryCount, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, packageId, direction, status, 0, timestamp, timestamp],
+      [id, packageId, parsed.direction, parsed.status, 0, timestamp, timestamp],
     );
-    res.status(201).json({ item: { id, packageId, direction, status, retryCount: 0, createdAt: timestamp, updatedAt: timestamp } });
+    res.status(201).json({
+      item: {
+        id,
+        packageId,
+        direction: parsed.direction,
+        status: parsed.status,
+        retryCount: 0,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    });
   } catch (error) {
     console.error('enqueue failed', error);
     res.status(500).json({ message: 'senkronizasyon kuyruğa eklenemedi' });
@@ -144,16 +250,17 @@ router.get('/queue', async (_req, res) => {
 router.put('/queue/:queueId', async (req, res) => {
   try {
     const { queueId } = req.params;
-    const { status, retryCount, lastError } = req.body || {};
+    const parsed = parseBody(queueUpdateSchema, req.body, res);
+    if (!parsed) return;
     const pool = await getDbPool();
     const [existingRows] = await pool.query('SELECT * FROM sync_queue WHERE id = ?', [queueId]);
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ message: 'kuyruk kaydı bulunamadı' });
 
     const nextValues = {
-      status: status || existing.status,
-      retryCount: retryCount ?? existing.retryCount,
-      lastError: lastError ?? existing.lastError,
+      status: parsed.status || existing.status,
+      retryCount: parsed.retryCount ?? existing.retryCount,
+      lastError: parsed.lastError ?? existing.lastError,
     };
     const timestamp = now();
     await pool.execute(
@@ -186,14 +293,12 @@ router.get('/tiles', async (req, res) => {
 
 router.post('/tiles', async (req, res) => {
   try {
-    const { region, zoom, tileX, tileY, packageId = null } = req.body || {};
-    if (!region || zoom === undefined || tileX === undefined || tileY === undefined) {
-      return res.status(400).json({ message: 'region, zoom, tileX ve tileY zorunludur' });
-    }
+    const parsed = parseBody(tileCreateSchema, req.body, res);
+    if (!parsed) return;
 
     const pool = await getDbPool();
-    if (packageId) {
-      const [packages] = await pool.query('SELECT id FROM map_packages WHERE id = ?', [packageId]);
+    if (parsed.packageId) {
+      const [packages] = await pool.query('SELECT id FROM map_packages WHERE id = ?', [parsed.packageId]);
       if (!packages[0]) {
         return res.status(400).json({ message: 'packageId geçersiz' });
       }
@@ -204,7 +309,7 @@ router.post('/tiles', async (req, res) => {
     try {
       await pool.execute(
         'INSERT INTO region_tiles (id, region, zoom, tileX, tileY, packageId, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id, region, zoom, tileX, tileY, packageId, timestamp],
+        [id, parsed.region, parsed.zoom, parsed.tileX, parsed.tileY, parsed.packageId ?? null, timestamp],
       );
     } catch (error) {
       if (error?.code === 'ER_DUP_ENTRY') {
@@ -213,7 +318,17 @@ router.post('/tiles', async (req, res) => {
       throw error;
     }
 
-    res.status(201).json({ tile: { id, region, zoom, tileX, tileY, packageId, updatedAt: timestamp } });
+    res.status(201).json({
+      tile: {
+        id,
+        region: parsed.region,
+        zoom: parsed.zoom,
+        tileX: parsed.tileX,
+        tileY: parsed.tileY,
+        packageId: parsed.packageId ?? null,
+        updatedAt: timestamp,
+      },
+    });
   } catch (error) {
     console.error('tile create failed', error);
     res.status(500).json({ message: 'tile kaydedilemedi' });
@@ -223,7 +338,8 @@ router.post('/tiles', async (req, res) => {
 router.put('/tiles/:tileId', async (req, res) => {
   try {
     const { tileId } = req.params;
-    const { region, zoom, tileX, tileY, packageId } = req.body || {};
+    const parsed = parseBody(tileUpdateSchema, req.body, res);
+    if (!parsed) return;
     const pool = await getDbPool();
     const [existingRows] = await pool.query('SELECT * FROM region_tiles WHERE id = ?', [tileId]);
     const existing = existingRows[0];
@@ -231,19 +347,19 @@ router.put('/tiles/:tileId', async (req, res) => {
       return res.status(404).json({ message: 'tile bulunamadı' });
     }
 
-    if (packageId) {
-      const [packages] = await pool.query('SELECT id FROM map_packages WHERE id = ?', [packageId]);
+    if (parsed.packageId) {
+      const [packages] = await pool.query('SELECT id FROM map_packages WHERE id = ?', [parsed.packageId]);
       if (!packages[0]) {
         return res.status(400).json({ message: 'packageId geçersiz' });
       }
     }
 
     const nextValues = {
-      region: region || existing.region,
-      zoom: zoom ?? existing.zoom,
-      tileX: tileX ?? existing.tileX,
-      tileY: tileY ?? existing.tileY,
-      packageId: packageId === undefined ? existing.packageId : packageId,
+      region: parsed.region || existing.region,
+      zoom: parsed.zoom ?? existing.zoom,
+      tileX: parsed.tileX ?? existing.tileX,
+      tileY: parsed.tileY ?? existing.tileY,
+      packageId: parsed.packageId === undefined ? existing.packageId : parsed.packageId,
     };
     const timestamp = now();
 
