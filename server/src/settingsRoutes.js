@@ -21,6 +21,12 @@ const DEFAULT_SETTING_KEY_MAP = new Map([
   ['settings_feature_flags', 'public.settings.featureFlags'],
 ]);
 
+const ENDPOINT_SETTING_KEY_MAP = new Map([
+  ['api_base_url', 'public.api.baseUrl'],
+  ['api_websocket_url', 'public.api.websocketUrl'],
+  ['tile_cdn_url', 'public.cdn.tileUrl'],
+]);
+
 const MAP_PACKAGE_SETTING_KEY_MAP = new Map([
   ['map_package_base_url', 'public.maps.baseUrl'],
   ['map_package_index_url', 'public.maps.indexUrl'],
@@ -28,7 +34,11 @@ const MAP_PACKAGE_SETTING_KEY_MAP = new Map([
   ['map_package_manifest_url', 'public.maps.manifestUrl'],
 ]);
 
-const CLIENT_ALLOWED_KEYS = new Map([...DEFAULT_SETTING_KEY_MAP, ...MAP_PACKAGE_SETTING_KEY_MAP]);
+const CLIENT_ALLOWED_KEYS = new Map([
+  ...DEFAULT_SETTING_KEY_MAP,
+  ...ENDPOINT_SETTING_KEY_MAP,
+  ...MAP_PACKAGE_SETTING_KEY_MAP,
+]);
 
 function respondValidation(res, error) {
   return res.status(400).json({
