@@ -45,6 +45,11 @@ const maskedKeys = new Set([
 
 const requiredKeys = [
   'VITE_API_BASE_URL',
+  'VITE_TILE_CDN_URL',
+  'VITE_MAP_PACKAGE_BASE_URL',
+  'VITE_MAP_PACKAGE_INDEX_URL',
+  'VITE_MAP_PACKAGE_DOWNLOAD_URL',
+  'VITE_MAP_PACKAGE_MANIFEST_URL',
   'VITE_AUTH_DOMAIN',
   'VITE_AUTH_CLIENT_ID',
   'VITE_AUTH_AUDIENCE',
@@ -101,6 +106,9 @@ function validateEnvValues(envValues) {
     const message = [
       'Eksik/boş zorunlu ortam değişkenleri bulundu:',
       ...missingRequired.map((key) => `  - ${key}`),
+      '',
+      'Aşağıdaki anahtarlar tanımlı ve boş olmayan değerlere sahip olmalıdır:',
+      ...requiredKeys.map((key) => `  - ${key}`),
       '',
       'admin/.env (veya admin/.env.local) dosyalarındaki değerleri kontrol edip tekrar deneyin.',
     ].join('\n');
