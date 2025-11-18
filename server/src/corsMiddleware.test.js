@@ -67,6 +67,22 @@ test('cors middleware enforces allowed origins', async (t) => {
     assert.strictEqual(res.headers.Vary, 'Origin');
   });
 
+  await t.test('includes max-age for allowed preflight requests', async () => {
+    const corsMiddleware = createCorsMiddleware(buildConfig({ ALLOWED_ORIGINS: 'https://admin.example.com' }));
+    const req = { headers: { origin: 'https://admin.example.com' }, method: 'OPTIONS', path: '/api' };
+    const res = createMockResponse();
+    let nextCalled = false;
+
+    await corsMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.strictEqual(nextCalled, false);
+    assert.strictEqual(res.statusCode, 204);
+    assert.strictEqual(res.headers['Access-Control-Allow-Origin'], 'https://admin.example.com');
+    assert.strictEqual(res.headers['Access-Control-Max-Age'], '600');
+  });
+
   await t.test('blocks disallowed origins', async () => {
     const corsMiddleware = createCorsMiddleware(buildConfig({ ALLOWED_ORIGINS: 'https://admin.example.com' }));
     const req = { headers: { origin: 'https://app.example.com' }, method: 'GET', path: '/api' };
@@ -102,6 +118,7 @@ test('cors middleware enforces allowed origins', async (t) => {
     assert.strictEqual(res.headers['Access-Control-Allow-Origin'], 'http://localhost:5173');
     assert.strictEqual(res.headers['Access-Control-Allow-Methods'], 'GET,POST,PUT,DELETE,OPTIONS');
     assert.strictEqual(res.headers['Access-Control-Allow-Headers'], 'Content-Type, Authorization');
+    assert.strictEqual(res.headers['Access-Control-Max-Age'], '600');
   });
 
   await t.test('passes through when origin header is absent', async () => {
