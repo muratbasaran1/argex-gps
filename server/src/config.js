@@ -1,8 +1,15 @@
 function parseAllowedOrigins(rawOrigins) {
+  const seen = new Set();
+
   return (rawOrigins || '')
     .split(',')
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((origin) => {
+      if (seen.has(origin)) return false;
+      seen.add(origin);
+      return true;
+    });
 }
 
 export function loadAllowedOrigins(env = process.env) {

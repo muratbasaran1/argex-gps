@@ -14,6 +14,15 @@ test('parses comma-separated origins into a trimmed list and set', () => {
   assert.strictEqual(config.nodeEnv, 'development');
 });
 
+test('deduplicates repeated origins while preserving order', () => {
+  const env = { ALLOWED_ORIGINS: 'https://example.com,https://example.com,http://localhost' };
+
+  const config = loadAllowedOrigins(env);
+
+  assert.deepStrictEqual(config.origins, ['https://example.com', 'http://localhost']);
+  assert.deepStrictEqual(Array.from(config.set), ['https://example.com', 'http://localhost']);
+});
+
 test('exposes a helpful error when origins are missing in development', () => {
   const env = { NODE_ENV: 'development' };
 
