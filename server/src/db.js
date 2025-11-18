@@ -26,18 +26,24 @@ function buildPoolConfig() {
     dateStrings: true,
   };
 
-  const databaseUrl = process.env.DATABASE_URL;
+  const env = process.env;
+  const databaseUrl = env.DATABASE_URL;
   if (databaseUrl) {
-    return { ...baseConfig, ...parseDatabaseUrl(databaseUrl) };
+    const urlConfig = parseDatabaseUrl(databaseUrl);
+    return {
+      ...baseConfig,
+      ...urlConfig,
+      database: env.DATABASE_SCHEMA || urlConfig.database,
+    };
   }
 
   return {
     ...baseConfig,
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'settings_service',
+    host: env.DB_HOST || 'localhost',
+    port: env.DB_PORT ? Number(env.DB_PORT) : 3306,
+    user: env.DB_USER || 'root',
+    password: env.DB_PASSWORD || '',
+    database: env.DATABASE_SCHEMA || env.DB_NAME || 'settings_service',
   };
 }
 
