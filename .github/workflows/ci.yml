@@ -27,6 +27,14 @@ jobs:
         run: npm run lint
       - name: Run tests
         run: npm test
+      - name: Verify dev server can serve dist
+        run: |
+          set -euo pipefail
+          npm run dev -- --port 4173 >/tmp/admin-dev.log 2>&1 &
+          DEV_PID=$!
+          trap "kill $DEV_PID" EXIT
+          sleep 3
+          curl -I http://localhost:4173/index.html
 
   server:
     name: Server lint & tests (with MySQL)

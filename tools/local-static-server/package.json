@@ -1,0 +1,9 @@
+{
+  "name": "local-static-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "local-static-server": "index.js"
+  }
+}

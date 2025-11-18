@@ -21,3 +21,5 @@ Bu dizin, statik admin panelini üretmek ve `.env` içeriğini tarayıcıya glob
 `node admin/build.js` komutu hem yerel ortamda hem de CI'da aynı yolu izler; `admin/.env` (ve varsa `admin/.env.local`) değerlerini baz alır. Kök `.env` dosyası okunmaz ve `VITE_` değişkenleri için allowlist (örn. `VITE_UI_BRAND`) uygulanır.
 
 Sayfa yüklenirken `env.js` önce çalışır ve ayar formundaki alanlar (bölge, harita stili, feature flag'ler, harita paket indir/manifest URL'leri ve OIDC authorize/token/client bilgileri) `admin/.env` içeriğindeki allowlist edilmiş `VITE_*` ve `OIDC_*` değerleriyle otomatik olarak dolar.
+
+Yerelde çıktıyı doğrulamak için `npm run dev` komutu `dist/` dizinini yeniden oluşturur ve Node tabanlı yerel sunucuyu (`local-static-server`) 4173 portunda ayağa kaldırır; tarayıcıdan `http://localhost:4173` adresine giderek statik admin panelini görüntüleyebilirsiniz.

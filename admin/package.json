@@ -5,7 +5,10 @@
   "scripts": {
     "lint": "node --check build.js",
     "test": "npm run lint",
-    "dev": "npm run build && python3 -m http.server 4173 --directory dist",
+    "dev": "npm run build && local-static-server dist --port 4173",
     "build": "node build.js"
+  },
+  "devDependencies": {
+    "local-static-server": "file:../tools/local-static-server"
   }
 }
