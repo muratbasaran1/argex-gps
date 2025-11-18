@@ -69,6 +69,31 @@ test('GET /api/settings/public only returns client visible settings', async () =
   ]);
 });
 
+test('GET /api/settings/public exposes allowlisted defaults with normalized keys', async () => {
+  const store = {
+    listSettings: async () => [
+      { key: 'SETTINGS_DEFAULT_REGION', value: 'na', secret: false, updatedAt: 'today' },
+      { key: 'SETTINGS_DEFAULT_MAP_STYLE', value: 'outdoors', secret: false, updatedAt: 'today' },
+      { key: 'SETTINGS_FEATURE_FLAGS', value: 'offline-sync,map-packages', secret: false, updatedAt: 'today' },
+      { key: 'SETTINGS_UNLISTED', value: 'ignore-me', secret: false, updatedAt: 'today' },
+    ],
+  };
+
+  const app = buildTestApp(store);
+  const res = await makeRequest(app, 'GET', '/api/settings/public');
+
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(res.body.settings, [
+    { key: 'public.settings.defaultRegion', value: 'na', updatedAt: 'today' },
+    { key: 'public.settings.defaultMapStyle', value: 'outdoors', updatedAt: 'today' },
+    {
+      key: 'public.settings.featureFlags',
+      value: 'offline-sync,map-packages',
+      updatedAt: 'today',
+    },
+  ]);
+});
+
 test('POST /api/settings validates payload and forwards to store', async () => {
   const calls = [];
   const store = {

@@ -14,6 +14,11 @@ import { createSettingSchema, updateSettingSchema } from './settingsSchema.js';
 const defaultStore = createSettingsStore();
 
 const CLIENT_ALLOWED_PREFIXES = ['public.', 'public_', 'url.', 'url_', 'cdn.', 'cdn_'];
+const CLIENT_ALLOWED_KEYS = new Map([
+  ['settings_default_region', 'public.settings.defaultRegion'],
+  ['settings_default_map_style', 'public.settings.defaultMapStyle'],
+  ['settings_feature_flags', 'public.settings.featureFlags'],
+]);
 
 function respondValidation(res, error) {
   return res.status(400).json({
@@ -37,7 +42,15 @@ function maskSetting(setting) {
 function isClientVisible(setting) {
   if (!setting || setting.secret) return false;
   const lowerKey = String(setting.key || '').toLowerCase();
-  return CLIENT_ALLOWED_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+  return CLIENT_ALLOWED_KEYS.has(lowerKey) || CLIENT_ALLOWED_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+}
+
+function normalizeClientSetting(setting) {
+  if (!setting) return null;
+  const lowerKey = String(setting.key || '').toLowerCase();
+  const mappedKey = CLIENT_ALLOWED_KEYS.get(lowerKey);
+  if (!mappedKey) return setting;
+  return { ...setting, key: mappedKey };
 }
 
 function buildStore(store) {
@@ -150,6 +163,7 @@ export function createPublicSettingsRouter(store) {
       const settings = await resolvedStore.listSettings();
       const visibleSettings = settings
         .filter(isClientVisible)
+        .map((setting) => normalizeClientSetting(setting))
         .map((setting) => ({
           key: setting.key,
           value: setting.value,
