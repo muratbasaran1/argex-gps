@@ -96,13 +96,29 @@ async function verifyJwt(token) {
   if (payload.exp && payload.exp < now) {
     throw new Error('token expired');
   }
-  if (issuer && payload.iss && payload.iss !== issuer) {
-    throw new Error('issuer mismatch');
+  if (issuer) {
+    if (!payload.iss) {
+      const error = new Error('issuer claim required');
+      error.status = 401;
+      throw error;
+    }
+    if (payload.iss !== issuer) {
+      const error = new Error('issuer mismatch');
+      error.status = 401;
+      throw error;
+    }
   }
   if (audience) {
-    const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    if (payload.aud && !aud.includes(audience)) {
-      throw new Error('audience mismatch');
+    const aud = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+    if (!aud.length) {
+      const error = new Error('audience claim required');
+      error.status = 403;
+      throw error;
+    }
+    if (!aud.includes(audience)) {
+      const error = new Error('audience mismatch');
+      error.status = 403;
+      throw error;
     }
   }
   return payload;
@@ -141,7 +157,9 @@ export async function requireAdmin(req, res, next) {
     return next();
   } catch (error) {
     console.error('auth failed', error);
-    return res.status(401).json({ message: 'unauthorized', error: error.message });
+    const status = Number.isInteger(error.status) ? error.status : 401;
+    const message = status === 403 ? 'forbidden' : 'unauthorized';
+    return res.status(status).json({ message, error: error.message });
   }
 }
 

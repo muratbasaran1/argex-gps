@@ -7,7 +7,7 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "lint": "node --check src/*.js src/**/*.js",
-    "test": "node --test src/settingsStore.test.js src/settingsRoutes.test.js"
+    "test": "node --test src/*.test.js"
   },
   "dependencies": {
     "express": "^4.19.2",
