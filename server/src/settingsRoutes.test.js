@@ -136,6 +136,23 @@ test('GET /api/settings/public exposes API and CDN endpoints with normalized key
   ]);
 });
 
+test('GET /api/settings/public omits secret endpoint settings even when allowlisted', async () => {
+  const store = {
+    listSettings: async () => [
+      { key: 'api_base_url', value: 'https://api.hidden.com', secret: true, updatedAt: 'today' },
+      { key: 'tile_cdn_url', value: 'https://cdn.visible.com/tiles', secret: false, updatedAt: 'today' },
+    ],
+  };
+
+  const app = buildTestApp(store);
+  const res = await makeRequest(app, 'GET', '/api/settings/public');
+
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(res.body.settings, [
+    { key: 'public.cdn.tileUrl', value: 'https://cdn.visible.com/tiles', updatedAt: 'today' },
+  ]);
+});
+
 test('POST /api/settings validates payload and forwards to store', async () => {
   const calls = [];
   const store = {
