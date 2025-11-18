@@ -47,13 +47,19 @@ async function ensureSettingsSchema(pool) {
       id CHAR(36) NOT NULL,
       \`key\` VARCHAR(255) NOT NULL,
       value TEXT NOT NULL,
-      description TEXT DEFAULT '',
+      description TEXT NOT NULL,
       secret TINYINT(1) DEFAULT 0,
       updatedAt DATETIME NOT NULL,
       PRIMARY KEY (id),
       UNIQUE KEY idx_settings_key (\`key\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  const [descriptionColumn] = await pool.execute('SHOW COLUMNS FROM settings LIKE "description"');
+  const hasDefaultDescription = descriptionColumn?.[0]?.Default !== null;
+  if (hasDefaultDescription) {
+    await pool.execute('ALTER TABLE settings MODIFY description TEXT NOT NULL');
+  }
 
   const [secretColumn] = await pool.execute('SHOW COLUMNS FROM settings LIKE "secret"');
   if (!secretColumn || secretColumn.length === 0) {
