@@ -37,6 +37,27 @@ const vitePassthroughKeys = new Set([
   'VITE_UI_BRAND',
 ]);
 
+// Secrets that should never be exported to window.* even if present in the .env
+const maskedKeys = new Set([
+  'OIDC_CLIENT_SECRET',
+  'VITE_AUTH_CLIENT_SECRET',
+]);
+
+const requiredKeys = [
+  'VITE_API_BASE_URL',
+  'VITE_AUTH_DOMAIN',
+  'VITE_AUTH_CLIENT_ID',
+  'VITE_AUTH_AUDIENCE',
+  'VITE_AUTH_SCOPE',
+  'VITE_AUTH_REDIRECT_URI',
+  'VITE_AUTH_POST_LOGOUT_REDIRECT_URI',
+  'OIDC_AUTHORIZE_URL',
+  'OIDC_TOKEN_URL',
+  'OIDC_CLIENT_ID',
+  'OIDC_SCOPE',
+  'OIDC_REDIRECT_URI',
+];
+
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
   const content = fs.readFileSync(filePath, 'utf8');
@@ -64,9 +85,48 @@ function loadEnvValues() {
     .reduce((acc, filePath) => ({ ...acc, ...parseEnvFile(filePath) }), {});
 }
 
+function validateEnvValues(envValues) {
+  const missingRequired = requiredKeys.filter(
+    (key) => envValues[key] === undefined || envValues[key].trim() === ''
+  );
+
+  const disallowed = Object.keys(envValues).filter(
+    (key) =>
+      !passthroughKeys.has(key) &&
+      !vitePassthroughKeys.has(key) &&
+      !maskedKeys.has(key)
+  );
+
+  if (missingRequired.length > 0) {
+    const message = [
+      'Eksik/boş zorunlu ortam değişkenleri bulundu:',
+      ...missingRequired.map((key) => `  - ${key}`),
+      '',
+      'admin/.env (veya admin/.env.local) dosyalarındaki değerleri kontrol edip tekrar deneyin.',
+    ].join('\n');
+    throw new Error(message);
+  }
+
+  if (disallowed.length > 0) {
+    console.warn(
+      'Allowlist dışında kalan anahtarlar bulundu ve yoksayıldı:\n' +
+        disallowed.map((key) => `  - ${key}`).join('\n')
+    );
+  }
+
+  const maskedPresent = [...maskedKeys].filter((key) => envValues[key]);
+  if (maskedPresent.length > 0) {
+    console.warn(
+      'Gizli kalması gereken anahtarlar tespit edildi ve window.* çıktısına eklenmedi:\n' +
+        maskedPresent.map((key) => `  - ${key} (maskelendi)`).join('\n')
+    );
+  }
+}
+
 function collectWindowConfig(allEnv) {
   return Object.entries(allEnv).reduce((acc, [key, value]) => {
     if (value === undefined) return acc;
+    if (maskedKeys.has(key)) return acc;
     if (vitePassthroughKeys.has(key)) {
       acc[key.replace(/^VITE_/, '')] = value;
       return acc;
@@ -98,6 +158,7 @@ function build() {
   ensureDist();
   copyIndex();
   const envValues = loadEnvValues();
+  validateEnvValues(envValues);
   const windowValues = collectWindowConfig(envValues);
   writeEnvScript(windowValues);
   console.log(`Admin build completed. ${Object.keys(windowValues).length} environment value(s) exported to window.*`);
