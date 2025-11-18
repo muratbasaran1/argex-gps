@@ -1,0 +1,8 @@
+{
+  "name": "supertest",
+  "version": "0.0.0-local",
+  "type": "module",
+  "main": "index.js",
+  "description": "Lightweight Supertest-compatible helper for offline test runs",
+  "license": "MIT"
+}

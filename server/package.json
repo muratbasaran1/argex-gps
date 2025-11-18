@@ -16,5 +16,8 @@
     "mysql2": "^3.11.3",
     "uuid": "^9.0.1",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "file:vendor/supertest"
   }
 }

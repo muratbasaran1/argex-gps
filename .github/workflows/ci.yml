@@ -75,6 +75,10 @@ jobs:
             const c=mysql.createConnection({host:'127.0.0.1',user:'argex',password:'argex',database:'argex_gps'});
             c.connect(err=>{if(err){setTimeout(()=>wait().then(res).catch(rej),1000);c.destroy();}else{c.end();res();}});
           }); wait();"
+      - name: Seed database schema and fixtures
+        run: |
+          mysql -h 127.0.0.1 -uargex -pargex argex_gps < sql/001_schema.sql
+          mysql -h 127.0.0.1 -uargex -pargex argex_gps < sql/002_test_fixtures.sql
       - name: Run lint
         env:
           DATABASE_URL: mysql://argex:argex@127.0.0.1:3306/argex_gps
