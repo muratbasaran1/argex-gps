@@ -14,15 +14,21 @@ import { createSettingSchema, updateSettingSchema } from './settingsSchema.js';
 const defaultStore = createSettingsStore();
 
 const CLIENT_ALLOWED_PREFIXES = ['public.', 'public_', 'url.', 'url_', 'cdn.', 'cdn_'];
-const CLIENT_ALLOWED_KEYS = new Map([
+
+const DEFAULT_SETTING_KEY_MAP = new Map([
   ['settings_default_region', 'public.settings.defaultRegion'],
   ['settings_default_map_style', 'public.settings.defaultMapStyle'],
   ['settings_feature_flags', 'public.settings.featureFlags'],
+]);
+
+const MAP_PACKAGE_SETTING_KEY_MAP = new Map([
   ['map_package_base_url', 'public.maps.baseUrl'],
   ['map_package_index_url', 'public.maps.indexUrl'],
   ['map_package_download_url', 'public.maps.downloadUrl'],
   ['map_package_manifest_url', 'public.maps.manifestUrl'],
 ]);
+
+const CLIENT_ALLOWED_KEYS = new Map([...DEFAULT_SETTING_KEY_MAP, ...MAP_PACKAGE_SETTING_KEY_MAP]);
 
 function respondValidation(res, error) {
   return res.status(400).json({
