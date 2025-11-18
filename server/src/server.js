@@ -14,12 +14,9 @@ app.use(helmet());
 app.use(express.json());
 app.use(morgan('dev'));
 if (!allowedOriginsConfig.set) {
-  console.error(corsMessages.missingEnv);
-  process.exit(1);
-}
-
-if (allowedOriginsConfig.source === 'dev-default') {
-  console.warn(corsMessages.devDefaultsInUse);
+  const message = allowedOriginsConfig.error || corsMessages.missingEnv;
+  console.error(`[startup] ${message}`);
+  throw new Error(message);
 }
 
 app.use(corsMiddleware);

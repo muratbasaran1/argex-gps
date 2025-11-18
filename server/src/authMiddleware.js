@@ -165,10 +165,11 @@ export function corsMiddleware(req, res, next) {
   const allowedOrigins = allowedOriginsConfig.set;
 
   if (!allowedOrigins) {
-    const message = corsMessages.missingEnv;
+    const message = allowedOriginsConfig.error || corsMessages.missingEnv;
     const responseBody = {
       message,
-      action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.',
+      action:
+        'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins (e.g., http://localhost:5173,http://localhost:3000 in development).',
     };
     res.header('Vary', 'Origin');
     console.error('[cors]', message);

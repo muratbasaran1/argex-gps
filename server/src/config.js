@@ -1,5 +1,3 @@
-const DEV_DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://localhost:3000'];
-
 function parseAllowedOrigins(rawOrigins) {
   return (rawOrigins || '')
     .split(',')
@@ -9,27 +7,26 @@ function parseAllowedOrigins(rawOrigins) {
 
 export function loadAllowedOrigins(env = process.env) {
   const origins = parseAllowedOrigins(env.ALLOWED_ORIGINS);
-  if (origins.length) {
-    return { origins, source: 'env' };
-  }
-
   const nodeEnv = env.NODE_ENV || 'development';
-  if (nodeEnv === 'development') {
-    return { origins: DEV_DEFAULT_ALLOWED_ORIGINS, source: 'dev-default' };
+  if (origins.length) {
+    return { origins, source: 'env', set: new Set(origins), nodeEnv };
   }
 
-  return { origins: [], source: 'missing' };
+  const sample = nodeEnv === 'development' ? ' Example: ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000' : '';
+  const error = `ALLOWED_ORIGINS is required; set a comma-separated list of allowed origins before starting the server.${sample}`;
+
+  return { origins: [], source: 'missing', set: null, nodeEnv, error };
 }
 
 export const allowedOriginsConfig = (() => {
   const config = loadAllowedOrigins();
-  const set = config.origins.length ? new Set(config.origins) : null;
-  return { ...config, set };
+  if (!config.set) {
+    console.error(`[startup] ${config.error}`);
+  }
+  return config;
 })();
 
 export const corsMessages = {
   missingEnv:
     'CORS is not configured. Set ALLOWED_ORIGINS to a comma-separated list of approved origins before starting the server.',
-  devDefaultsInUse:
-    'Using development fallback ALLOWED_ORIGINS values. Set ALLOWED_ORIGINS in production to restrict access to known clients.',
 };
