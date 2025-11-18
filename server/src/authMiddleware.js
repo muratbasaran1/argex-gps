@@ -158,40 +158,44 @@ export async function requireAdmin(req, res, next) {
   }
 }
 
-export function corsMiddleware(req, res, next) {
-  const origin = req.headers.origin;
-  if (!origin || req.path === '/health') return next();
+export function createCorsMiddleware(config = allowedOriginsConfig) {
+  return function corsMiddleware(req, res, next) {
+    const origin = req.headers.origin;
+    if (!origin || req.path === '/health') return next();
 
-  const allowedOrigins = allowedOriginsConfig.set;
+    const allowedOrigins = config.set;
 
-  if (!allowedOrigins) {
-    const message = allowedOriginsConfig.error || corsMessages.missingEnv;
+    if (!allowedOrigins) {
+      const message = config.error || corsMessages.missingEnv;
+      const responseBody = {
+        message,
+        action:
+          'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins or enable ENABLE_DEV_CORS_FALLBACK=true for local development defaults.',
+      };
+      res.header('Vary', 'Origin');
+      console.warn('[cors]', message);
+      const status = 403;
+      return res.status(status).json(responseBody);
+    }
+
+    if (allowedOrigins.has(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Vary', 'Origin');
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+      return next();
+    }
+
+    res.header('Vary', 'Origin');
     const responseBody = {
-      message,
-      action:
-        'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins or enable ENABLE_DEV_CORS_FALLBACK=true for local development defaults.',
+      message: 'origin not allowed',
+      allowedOrigins: Array.from(allowedOrigins),
     };
-    res.header('Vary', 'Origin');
-    console.warn('[cors]', message);
-    const status = 403;
-    return res.status(status).json(responseBody);
-  }
-
-  if (allowedOrigins.has(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Vary', 'Origin');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    return next();
-  }
-
-  res.header('Vary', 'Origin');
-  const responseBody = {
-    message: 'origin not allowed',
-    allowedOrigins: Array.from(allowedOrigins),
+    if (req.method === 'OPTIONS') return res.status(403).json(responseBody);
+    return res.status(403).json(responseBody);
   };
-  if (req.method === 'OPTIONS') return res.status(403).json(responseBody);
-  return res.status(403).json(responseBody);
 }
+
+export const corsMiddleware = createCorsMiddleware();
