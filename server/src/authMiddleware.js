@@ -146,7 +146,7 @@ export async function requireAdmin(req, res, next) {
     const payload = await verifyJwt(token);
     const roles = collectRoles(payload);
     if (!roles.has(adminRole)) {
-      return res.status(403).json({ message: 'insufficient role' });
+      return res.status(403).json({ message: 'forbidden', error: 'missing required role' });
     }
     req.user = { ...payload, roles: Array.from(roles) };
     return next();
