@@ -1,10 +1,5 @@
 import crypto from 'crypto';
-
-const parsedAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map((item) => item.trim())
-  .filter(Boolean);
-const defaultAllowedOrigins = parsedAllowedOrigins;
+import { allowedOriginsConfig, corsMessages } from './config.js';
 const adminRole = process.env.ADMIN_ROLE || 'admin';
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_AUDIENCE;
@@ -165,17 +160,23 @@ export async function requireAdmin(req, res, next) {
 
 export function corsMiddleware(req, res, next) {
   const origin = req.headers.origin;
-  if (!origin) return next();
+  if (!origin || req.path === '/health') return next();
 
-  const allowedOrigins = defaultAllowedOrigins.length ? new Set(defaultAllowedOrigins) : null;
+  const allowedOrigins = allowedOriginsConfig.set;
 
   if (!allowedOrigins) {
-    const message = 'ALLOWED_ORIGINS must be configured to allow requests from known origins.';
+    const message = corsMessages.missingEnv;
+    const responseBody = {
+      message,
+      action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.',
+    };
     res.header('Vary', 'Origin');
+    console.error('[cors]', message);
+    const status = 503;
     if (req.method === 'OPTIONS') {
-      return res.status(500).json({ message, action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.' });
+      return res.status(status).json(responseBody);
     }
-    return res.status(500).json({ message });
+    return res.status(status).json(responseBody);
   }
 
   if (allowedOrigins.has(origin)) {

@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { corsMiddleware, requireAdmin } from './authMiddleware.js';
+import { allowedOriginsConfig, corsMessages } from './config.js';
 import authRoutes from './authRoutes.js';
 import settingsRoutes, { publicSettingsRouter } from './settingsRoutes.js';
 import mapsRoutes, { publicMapsRouter } from './mapsRoutes.js';
@@ -12,6 +13,15 @@ const app = express();
 app.use(helmet());
 app.use(express.json());
 app.use(morgan('dev'));
+if (!allowedOriginsConfig.set) {
+  console.error(corsMessages.missingEnv);
+  process.exit(1);
+}
+
+if (allowedOriginsConfig.source === 'dev-default') {
+  console.warn(corsMessages.devDefaultsInUse);
+}
+
 app.use(corsMiddleware);
 
 app.use('/api/settings/public', publicSettingsRouter);
