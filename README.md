@@ -26,7 +26,7 @@ Each template now ships with placeholder values for API URLs, database connectio
 
 ### Critical variables and how the settings page uses them
 - **admin/.env**
-  - **API endpoints**: `VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_BASE_URL`, and `VITE_MAP_PACKAGE_INDEX_URL` populate the settings form so the admin UI talks to the right HTTP, websocket, and tile/map download hosts.
+  - **API endpoints**: `VITE_API_BASE_URL`, `VITE_API_WEBSOCKET_URL`, `VITE_TILE_CDN_URL`, `VITE_MAP_PACKAGE_BASE_URL`, `VITE_MAP_PACKAGE_INDEX_URL`, `VITE_MAP_PACKAGE_DOWNLOAD_URL`, and `VITE_MAP_PACKAGE_MANIFEST_URL` populate the settings form so the admin UI talks to the right HTTP, websocket, and tile/map download hosts.
   - **Auth**: `VITE_AUTH_DOMAIN`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_AUDIENCE`, `VITE_AUTH_SCOPE`, `VITE_AUTH_REDIRECT_URI`, and `VITE_AUTH_POST_LOGOUT_REDIRECT_URI` configure the OIDC login flow the settings screen exposes to administrators.
   - **UI defaults**: `VITE_SETTINGS_DEFAULT_REGION`, `VITE_SETTINGS_DEFAULT_MAP_STYLE`, and `VITE_SETTINGS_FEATURE_FLAGS` let the single settings page toggle UI options (e.g., map style or feature switches) without hard-coding them.
   - **Branding and legacy API root**: `VITE_UI_BRAND` customizes the admin header label while `API_BASE_URL` is exported as-is for integrations that still rely on `window.API_BASE_URL`.
