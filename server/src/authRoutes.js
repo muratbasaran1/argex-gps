@@ -4,11 +4,16 @@ const revocationEndpoint = process.env.OIDC_REVOCATION_URL;
 const clientId = process.env.OIDC_CLIENT_ID;
 const clientSecret = process.env.OIDC_CLIENT_SECRET;
 
+if (!revocationEndpoint) {
+  console.warn('OIDC_REVOCATION_URL is not configured; logout revocation will return 503');
+}
+
 const router = express.Router();
 
 router.post('/logout', async (req, res) => {
   if (!revocationEndpoint) {
-    return res.status(500).json({ message: 'revocation endpoint is not configured' });
+    console.warn('Logout requested but OIDC_REVOCATION_URL is missing');
+    return res.status(503).json({ message: 'token revocation is not configured' });
   }
 
   const { token, token_type_hint: tokenTypeHint } = req.body || {};
