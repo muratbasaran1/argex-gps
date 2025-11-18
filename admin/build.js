@@ -44,7 +44,15 @@ const maskedKeys = new Set([
 ]);
 
 const requiredKeys = [
+  // API ve harita uçları
   'VITE_API_BASE_URL',
+  'VITE_API_WEBSOCKET_URL',
+  'VITE_TILE_CDN_URL',
+  'VITE_MAP_PACKAGE_BASE_URL',
+  'VITE_MAP_PACKAGE_INDEX_URL',
+  'VITE_MAP_PACKAGE_DOWNLOAD_URL',
+  'VITE_MAP_PACKAGE_MANIFEST_URL',
+  // Kimlik ve yetkilendirme
   'VITE_AUTH_DOMAIN',
   'VITE_AUTH_CLIENT_ID',
   'VITE_AUTH_AUDIENCE',
@@ -55,7 +63,15 @@ const requiredKeys = [
   'OIDC_TOKEN_URL',
   'OIDC_CLIENT_ID',
   'OIDC_SCOPE',
+  'OIDC_AUDIENCE',
   'OIDC_REDIRECT_URI',
+  // Ayar varsayılanları ve markalama
+  'VITE_SETTINGS_DEFAULT_REGION',
+  'VITE_SETTINGS_DEFAULT_MAP_STYLE',
+  'VITE_SETTINGS_FEATURE_FLAGS',
+  'VITE_UI_BRAND',
+  // Geriye dönük API kökü
+  'API_BASE_URL',
 ];
 
 function parseEnvFile(filePath) {
