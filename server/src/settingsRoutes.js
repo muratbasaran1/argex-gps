@@ -18,6 +18,10 @@ const CLIENT_ALLOWED_KEYS = new Map([
   ['settings_default_region', 'public.settings.defaultRegion'],
   ['settings_default_map_style', 'public.settings.defaultMapStyle'],
   ['settings_feature_flags', 'public.settings.featureFlags'],
+  ['map_package_base_url', 'public.maps.baseUrl'],
+  ['map_package_index_url', 'public.maps.indexUrl'],
+  ['map_package_download_url', 'public.maps.downloadUrl'],
+  ['map_package_manifest_url', 'public.maps.manifestUrl'],
 ]);
 
 function respondValidation(res, error) {
