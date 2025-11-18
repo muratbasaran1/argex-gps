@@ -1,13 +1,10 @@
 import crypto from 'crypto';
 
-const developerFallbackOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 const parsedAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((item) => item.trim())
   .filter(Boolean);
-const isProduction = process.env.NODE_ENV === 'production';
 const defaultAllowedOrigins = parsedAllowedOrigins;
-const usingDeveloperFallback = !isProduction && parsedAllowedOrigins.length === 0;
 const adminRole = process.env.ADMIN_ROLE || 'admin';
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_AUDIENCE;
@@ -152,14 +149,10 @@ export function corsMiddleware(req, res, next) {
   const origin = req.headers.origin;
   if (!origin) return next();
 
-  const allowedOrigins = defaultAllowedOrigins.length
-    ? new Set(defaultAllowedOrigins)
-    : usingDeveloperFallback
-      ? new Set(developerFallbackOrigins)
-      : null;
+  const allowedOrigins = defaultAllowedOrigins.length ? new Set(defaultAllowedOrigins) : null;
 
   if (!allowedOrigins) {
-    const message = 'ALLOWED_ORIGINS must be configured in production to allow requests.';
+    const message = 'ALLOWED_ORIGINS must be configured to allow requests from known origins.';
     res.header('Vary', 'Origin');
     if (req.method === 'OPTIONS') {
       return res.status(500).json({ message, action: 'Set ALLOWED_ORIGINS to a comma-separated list of allowed origins.' });
